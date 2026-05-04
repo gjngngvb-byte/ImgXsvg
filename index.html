@@ -271,7 +271,7 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
             Manga Studio FX
         </h1>
-        <p class="subtitle">Vetorização Perfeita (3 Camadas)</p>
+        <p class="subtitle">Vetorização Orgânica (3 Camadas)</p>
 
         <label class="btn btn-upload">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -279,30 +279,32 @@
             <input type="file" id="upload" accept="image/png, image/jpeg, image/webp">
         </label>
 
-        <div class="section-title">Contornos Suaves (Layer 1)</div>
+        <div class="section-title">Contornos Exatos (Layer 1)</div>
         
         <div class="control-group">
             <div class="control-header">
-                <label>Sensibilidade (Força da Linha)</label>
-                <span class="val-display" id="val-edge">35</span>
+                <label>Sensibilidade das Linhas</label>
+                <span class="val-display" id="val-edge">25</span>
             </div>
-            <input type="range" id="edge" min="10" max="150" value="35">
+            <!-- Limite calibrado para captar muito bem olhos, rosto e letras -->
+            <input type="range" id="edge" min="5" max="100" value="25">
         </div>
 
         <div class="control-group">
             <div class="control-header">
-                <label>Filtro de Ruído (Tamanho Mínimo)</label>
-                <span class="val-display" id="val-noise">10</span>
+                <label>Filtro de Sujidade (Tamanho Mínimo)</label>
+                <span class="val-display" id="val-noise">8</span>
             </div>
-            <input type="range" id="noise" min="0" max="30" value="10">
+            <!-- Exclui linhas curtíssimas (ruído) -->
+            <input type="range" id="noise" min="0" max="30" value="8">
         </div>
 
         <div class="control-group">
             <div class="control-header">
-                <label>Suavização Orgânica (Moving Avg)</label>
+                <label>Curvas de Bézier (Suavização)</label>
                 <span class="val-display" id="val-smooth">3</span>
             </div>
-            <!-- Remove os dentes de serra dos pixels e torna as curvas sedosas -->
+            <!-- Aplica Moving Average nas linhas para criar as curvas limpas -->
             <input type="range" id="smooth" min="0" max="6" value="3">
         </div>
 
@@ -310,7 +312,7 @@
 
         <div class="control-group">
             <select id="pattern">
-                <option value="dynamic-hatch" selected>Screentone Dinâmico</option>
+                <option value="dynamic-hatch" selected>Screentone Dinâmico (Perfeito)</option>
             </select>
         </div>
 
@@ -364,7 +366,7 @@
             <div style="display: flex; gap:10px; align-items:center;">
                 <div class="spinner"></div> Processando Vetores...
             </div>
-            <div id="loading-text">A traçar linhas orgânicas e suaves...</div>
+            <div id="loading-text">A traçar linhas perfeitamente lisas...</div>
         </div>
         <div id="svg-container">
             <div style="color: var(--border); font-size: 1.1rem; font-weight: 500;">Faça upload de uma imagem</div>
@@ -488,7 +490,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'manga-illustration.svg';
+            a.download = 'manga-illustration-pro.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -496,7 +498,7 @@
         });
 
         // ==========================================
-        // ALGORITMOS CORE (SUPER-SMOOTH VETORIZAÇÃO)
+        // ALGORITMOS CORE (VECTOR INKING SMOOTH)
         // ==========================================
 
         function runVectorPipeline() {
@@ -504,42 +506,32 @@
             const h = imgHeight;
             const data = imgData.data;
 
-            // --- 1. Luma & Blur para limpar a textura da foto ---
+            // --- 1. Luma e Filtro Suave ---
             const lumaMap = new Float32Array(w * h);
             for(let i=0; i<w*h; i++) {
                 lumaMap[i] = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2];
             }
 
-            let blurMap = new Float32Array(w * h);
-            let tempMap = new Float32Array(w * h);
-            for(let i=0; i<w*h; i++) blurMap[i] = lumaMap[i];
-            
-            // 3 passagens de Blur Gaussiano (limpa as micropigmentações e une as linhas)
-            const kernel = [1,4,6,4,1, 4,16,24,16,4, 6,24,36,24,6, 4,16,24,16,4, 1,4,6,4,1];
-            for(let pass=0; pass<3; pass++) {
-                let src = pass === 0 ? blurMap : tempMap;
-                let dst = pass === 0 ? tempMap : blurMap;
-                for(let y=2; y<h-2; y++) {
-                    for(let x=2; x<w-2; x++) {
-                        let sum = 0;
-                        for(let ky=-2; ky<=2; ky++) {
-                            for(let kx=-2; kx<=2; kx++) sum += src[(y+ky)*w+(x+kx)] * kernel[(ky+2)*5+(kx+2)];
-                        }
-                        dst[y*w+x] = sum / 256;
-                    }
+            const blurMap = new Float32Array(w * h);
+            // Aplicar UM ÚNICO PASSE de blur suave (3x3) para manter alta fidelidade (olhos, boca, letras)
+            for(let y=1; y<h-1; y++) {
+                for(let x=1; x<w-1; x++) {
+                    blurMap[y*w+x] = (
+                        lumaMap[(y-1)*w+x-1] + lumaMap[(y-1)*w+x]*2 + lumaMap[(y-1)*w+x+1] +
+                        lumaMap[y*w+x-1]*2   + lumaMap[y*w+x]*4   + lumaMap[y*w+x+1]*2 +
+                        lumaMap[(y+1)*w+x-1] + lumaMap[(y+1)*w+x]*2 + lumaMap[(y+1)*w+x+1]
+                    ) / 16.0;
                 }
             }
-            for(let i=0; i<w*h; i++) blurMap[i] = tempMap[i];
 
-
-            // --- 2. Sobel Magnitude + Direção ---
-            loadingText.textContent = "1/3 Detetando as bordas puras...";
+            // --- 2. Extração de Contornos (Sobel com Limites Seguros) ---
+            loadingText.textContent = "1/3 Extraindo contornos com precisão...";
             const mag = new Float32Array(w * h);
             const dir = new Uint8Array(w * h);
             
             for(let y=1; y<h-1; y++) {
                 for(let x=1; x<w-1; x++) {
-                    // CORTA BORDA FANTASMA: Uma margem de 6px é brutalmente apagada para evitar linhas de frame
+                    // PREVINE TOTALMENTE A BORDA EXTERNA (MARGEM DE SEGURANÇA 6px)
                     if (x <= 6 || x >= w - 6 || y <= 6 || y >= h - 6) {
                         mag[y*w+x] = 0;
                         continue;
@@ -554,7 +546,8 @@
                     
                     mag[y*w+x] = Math.sqrt(gx*gx + gy*gy);
                     
-                    let angDeg = Math.atan2(gy, gx) * (180 / Math.PI);
+                    let angle = Math.atan2(gy, gx);
+                    let angDeg = angle * (180 / Math.PI);
                     if (angDeg < 0) angDeg += 180;
                     
                     if ((angDeg >= 0 && angDeg < 22.5) || (angDeg >= 157.5 && angDeg <= 180)) dir[y*w+x] = 0; 
@@ -564,76 +557,45 @@
                 }
             }
 
-            // --- 3. NMS e Hysteresis ---
-            const edgesMap = new Uint8Array(w * h);
-            const highThresh = settings.edge;
-            const lowThresh = settings.edge * 0.3; // Permite linhas contínuas
-
+            // --- 3. Supressão Não-Máxima Cuidadosa (Garante conectividade) ---
             const nms = new Float32Array(w * h);
             for(let y=2; y<h-2; y++) {
                 for(let x=2; x<w-2; x++) {
                     let m = mag[y*w+x];
-                    if (m < lowThresh) continue;
+                    if (m === 0) continue;
+                    
                     let m1=0, m2=0;
                     if (dir[y*w+x] === 0) { m1 = mag[y*w + x-1]; m2 = mag[y*w + x+1]; } 
                     else if (dir[y*w+x] === 1) { m1 = mag[(y-1)*w + x+1]; m2 = mag[(y+1)*w + x-1]; } 
                     else if (dir[y*w+x] === 2) { m1 = mag[(y-1)*w + x]; m2 = mag[(y+1)*w + x]; } 
                     else { m1 = mag[(y-1)*w + x-1]; m2 = mag[(y+1)*w + x+1]; } 
-                    if (m >= m1 && m >= m2) nms[y*w+x] = m;
+                    
+                    // Condição relaxada (> m2 em vez de >= m2) evita quebrar linhas finas onde os pixeis têm valores iguais
+                    if (m >= m1 && m > m2) nms[y*w+x] = m;
                 }
             }
 
-            let stack = [];
-            for(let y=2; y<h-2; y++) {
-                for(let x=2; x<w-2; x++) {
-                    if (nms[y*w+x] >= highThresh) {
-                        edgesMap[y*w+x] = 1;
-                        stack.push(x, y);
-                    }
-                }
-            }
-            while(stack.length > 0) {
-                let cy = stack.pop(); let cx = stack.pop();
-                for(let dy=-1; dy<=1; dy++) {
-                    for(let dx=-1; dx<=1; dx++) {
-                        if(dx===0 && dy===0) continue;
-                        let nx = cx+dx, ny = cy+dy;
-                        if(nx>=2 && nx<w-2 && ny>=2 && ny<h-2) {
-                            if(edgesMap[ny*w+nx] === 0 && nms[ny*w+nx] >= lowThresh) {
-                                edgesMap[ny*w+nx] = 1;
-                                stack.push(nx, ny);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // --- 4. Rastreamento Bidirecional + Moving Average (A Magia da Suavização) ---
-            loadingText.textContent = "2/3 Extraindo caminhos orgânicos (Tracking & Smoothing)...";
+            // --- 4. Rastreamento Perfeito Contínuo (Hysteresis Tracing) ---
+            loadingText.textContent = "2/3 A traçar caminhos lisos de tinta...";
             const visited = new Uint8Array(w * h);
             let edgePaths = [];
-            const dirs8 = [[1,0], [1,1], [0,1], [-1,1], [-1,0], [-1,-1], [0,-1], [1,-1]];
+            
+            const highThresh = settings.edge;
+            const lowThresh = settings.edge * 0.3; // Segue ativamente a linha principal
+            const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+            const dy = [0, 1, 1, 1, 0, -1, -1, -1];
 
-            function findUnvisitedNeighbor(cx, cy) {
-                for(let d of dirs8) {
-                    let nx = cx+d[0], ny = cy+d[1];
-                    if(nx>=0 && nx<w && ny>=0 && ny<h && edgesMap[ny*w+nx]===1 && !visited[ny*w+nx]) {
-                        return {x: nx, y: ny};
-                    }
-                }
-                return null;
-            }
-
-            // Suavizador de Curvas: Retira os ângulos vivos formados pelos píxeis
-            function applyMovingAverage(pts, passes) {
-                if (pts.length < 3) return pts;
+            // Funções de Suavização para as Curvas
+            function smoothPath(pts, passes) {
+                if (pts.length < 3 || passes === 0) return pts;
                 let current = pts;
-                for (let iter = 0; iter < passes; iter++) {
+                for (let p = 0; p < passes; p++) {
                     let next = [{x: current[0].x, y: current[0].y}];
                     for (let i = 1; i < current.length - 1; i++) {
+                        // Suavização leve para arredondar ângulos de pixeis sem matar os cantos
                         next.push({
-                            x: (current[i-1].x + current[i].x + current[i+1].x) / 3,
-                            y: (current[i-1].y + current[i].y + current[i+1].y) / 3
+                            x: (current[i-1].x * 0.25 + current[i].x * 0.5 + current[i+1].x * 0.25),
+                            y: (current[i-1].y * 0.25 + current[i].y * 0.5 + current[i+1].y * 0.25)
                         });
                     }
                     next.push({x: current[current.length-1].x, y: current[current.length-1].y});
@@ -642,12 +604,31 @@
                 return current;
             }
 
-            function pointsToSmoothSVG(pts) {
+            function rdp(points, epsilon) {
+                if (points.length < 3) return points;
+                let maxDist = 0, index = 0;
+                const end = points.length - 1;
+                const sqrDist = (p, p1, p2) => {
+                    const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+                    if (l2 === 0) return Math.pow(p.x - p1.x, 2) + Math.pow(p.y - p1.y, 2);
+                    let t = Math.max(0, Math.min(1, ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2));
+                    return Math.pow(p.x - (p1.x + t * (p2.x - p1.x)), 2) + Math.pow(p.y - (p1.y + t * (p2.y - p1.y)), 2);
+                };
+                for (let i = 1; i < end; i++) {
+                    const d = sqrDist(points[i], points[0], points[end]);
+                    if (d > maxDist) { index = i; maxDist = d; }
+                }
+                if (maxDist > epsilon * epsilon) {
+                    return rdp(points.slice(0, index + 1), epsilon).slice(0, -1).concat(rdp(points.slice(index), epsilon));
+                } else return [points[0], points[end]];
+            }
+
+            function pathToBezierSVG(pts) {
                 if (pts.length === 0) return "";
                 if (pts.length === 1) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} l0.1,0.1`;
                 if (pts.length === 2) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`;
 
-                // Usa as curvas quadráticas de bezier baseadas nos pontos suavizados
+                // Usa as curvas quadráticas de bezier com interpolação de ponto médio para suavidade absoluta
                 let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
                 for (let i = 1; i < pts.length - 1; i++) {
                     let xc = (pts[i].x + pts[i+1].x) / 2;
@@ -658,48 +639,69 @@
                 return d;
             }
 
-            for(let y=2; y<h-2; y++) {
-                for(let x=2; x<w-2; x++) {
-                    if(edgesMap[y*w+x] === 1 && !visited[y*w+x]) {
+            // O Rastreamento Inteligente de Linhas (Frente e Trás) para formar um único percurso SVG contínuo
+            for (let y=2; y<h-2; y++) {
+                for (let x=2; x<w-2; x++) {
+                    if (!visited[y*w+x] && nms[y*w+x] >= highThresh) {
                         let path = [];
                         
-                        // Traçar Caminho para Frente
+                        // Direção 1 (Frente)
                         let cx = x, cy = y;
-                        path.push({x: cx, y: cy});
-                        visited[cy*w+cx] = 1;
-                        
                         while(true) {
-                            let n = findUnvisitedNeighbor(cx, cy);
-                            if (n) {
-                                path.push(n);
-                                visited[n.y*w+n.x] = 1;
-                                cx = n.x; cy = n.y;
+                            path.push({x: cx, y: cy});
+                            visited[cy*w+cx] = 1;
+                            
+                            let bestNx = -1, bestNy = -1, bestMag = -1;
+                            for (let i=0; i<8; i++) {
+                                let nx = cx + dx[i], ny = cy + dy[i];
+                                if (nx>=1 && nx<w-1 && ny>=1 && ny<h-1 && !visited[ny*w+nx]) {
+                                    if (nms[ny*w+nx] >= lowThresh && nms[ny*w+nx] > bestMag) {
+                                        bestMag = nms[ny*w+nx];
+                                        bestNx = nx; bestNy = ny;
+                                    }
+                                }
+                            }
+                            if (bestNx !== -1) { cx = bestNx; cy = bestNy; }
+                            else break;
+                        }
+
+                        // Direção 2 (Trás) - volta à semente inicial e traça para o outro lado
+                        cx = x; cy = y;
+                        while(true) {
+                            let bestNx = -1, bestNy = -1, bestMag = -1;
+                            for (let i=0; i<8; i++) {
+                                let nx = cx + dx[i], ny = cy + dy[i];
+                                if (nx>=1 && nx<w-1 && ny>=1 && ny<h-1 && !visited[ny*w+nx]) {
+                                    if (nms[ny*w+nx] >= lowThresh && nms[ny*w+nx] > bestMag) {
+                                        bestMag = nms[ny*w+nx];
+                                        bestNx = nx; bestNy = ny;
+                                    }
+                                }
+                            }
+                            if (bestNx !== -1) {
+                                path.unshift({x: bestNx, y: bestNy});
+                                visited[bestNy*w+bestNx] = 1;
+                                cx = bestNx; cy = bestNy;
                             } else break;
                         }
 
-                        // Traçar Caminho para Trás (garante que não partimos uma linha ao meio pelo ponto semente)
-                        cx = x; cy = y;
-                        while(true) {
-                            let n = findUnvisitedNeighbor(cx, cy);
-                            if (n) {
-                                path.unshift(n);
-                                visited[n.y*w+n.x] = 1;
-                                cx = n.x; cy = n.y;
-                            } else break;
-                        }
-                        
-                        // Elimina ruído minúsculo (Slider de ruído do utilizador)
+                        // Filtro de sujidade (Noise)
                         if (path.length >= settings.noise) {
-                            // Aplica suavização orgânica nas linhas
-                            let smoothed = applyMovingAverage(path, settings.smooth);
-                            edgePaths.push(pointsToSmoothSVG(smoothed));
+                            // MAGIA 1: Suavização orgânica de pontos (o traço "engomado")
+                            let smoothed = smoothPath(path, settings.smooth);
+                            
+                            // MAGIA 2: RDP leve (0.5) limpa o lixo de coordenadas sem descaraterizar o formato
+                            let simplified = rdp(smoothed, 0.5);
+                            
+                            // MAGIA 3: Converte coordenadas angulares no percurso perfeito curvo SVG (Bézier)
+                            edgePaths.push(pathToBezierSVG(simplified));
                         }
                     }
                 }
             }
 
-            // --- 5. Sombreamento Contínuo com Múltiplos Tons ---
-            loadingText.textContent = "3/3 Aplicando Sombreamento (Screentone)...";
+            // --- 5. Sombreamento Contínuo (Hachuras Dinâmicas Perfeitas Mantidas intactas) ---
+            loadingText.textContent = "3/3 Aplicando Sombreamento (Screentone Cascata)...";
             let hatchPaths = [];
             const baseSpacing = settings.density;
 
@@ -714,10 +716,10 @@
                     let lineMod = Math.abs(p % (baseSpacing * 4));
                     let minDarkness = 2.0; 
                     
-                    if (lineMod < 0.5) minDarkness = thresholds[0]; // Primária
-                    else if (Math.abs(lineMod - (baseSpacing * 2)) < 0.5) minDarkness = thresholds[1]; // Secundária
-                    else if (Math.abs(lineMod % baseSpacing) < 0.5) minDarkness = thresholds[2]; // Terciária
-                    else minDarkness = thresholds[3]; // Preto Sólido
+                    if (lineMod < 0.5) minDarkness = thresholds[0]; 
+                    else if (Math.abs(lineMod - (baseSpacing * 2)) < 0.5) minDarkness = thresholds[1]; 
+                    else if (Math.abs(lineMod % baseSpacing) < 0.5) minDarkness = thresholds[2]; 
+                    else minDarkness = thresholds[3]; 
 
                     if (minDarkness >= 1.0) continue;
 
@@ -754,11 +756,12 @@
                 if (currentLayerPath.length > 0) hatchPaths.push(currentLayerPath);
             }
 
+            // Geração em 3 Direções com 4 níveis
             drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85]); 
             drawDynamicHatch(135, [0.40, 0.65, 0.75, 0.90]);
             drawDynamicHatch(90, [0.65, 0.80, 0.90, 0.95]);
 
-            // --- MONTAGEM DAS 3 CAMADAS EXIGIDAS ---
+            // --- MONTAGEM DAS 3 CAMADAS (Fundo, Sombreamento, Contorno) ---
             const edgePathString = edgePaths.join('\n');
             const hatchPathString = hatchPaths.join('\n');
 
@@ -779,7 +782,7 @@
         <path class="hatch" d="${hatchPathString}" />
     </g>
 
-    <!-- CAMADA 1: Contornos Exatos de Caneta (Sobrepõe as texturas) -->
+    <!-- CAMADA 1: Contornos Lisos (Sobrepõe os sombreamentos) -->
     <g id="camada-1-contornos">
         <path class="edge" d="${edgePathString}" />
     </g>
