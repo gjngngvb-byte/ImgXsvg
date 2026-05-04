@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vector Screentone FX</title>
+    <title>Vector Screentone Pro FX</title>
     <style>
         :root {
             --bg-base: #0b0f19;
@@ -33,7 +33,7 @@
 
         /* Layout */
         .sidebar {
-            width: 340px;
+            width: 350px;
             background-color: var(--bg-panel);
             border-right: 1px solid var(--border);
             display: flex;
@@ -71,26 +71,32 @@
             gap: 8px;
         }
 
-        h1 svg {
-            color: var(--accent);
-        }
+        h1 svg { color: var(--accent); }
 
         p.subtitle {
             font-size: 0.85rem;
             color: var(--text-muted);
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         /* Controls */
-        .control-group {
-            margin-bottom: 1.5rem;
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            margin: 1rem 0 0.75rem 0;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid var(--border);
         }
+
+        .control-group { margin-bottom: 1.25rem; }
 
         .control-header {
             display: flex;
             justify-content: space-between;
             margin-bottom: 0.5rem;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
             font-weight: 500;
         }
 
@@ -118,9 +124,7 @@
             transition: transform 0.1s;
         }
 
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
         /* Buttons */
         .btn {
@@ -142,7 +146,7 @@
             background-color: var(--bg-input);
             color: var(--text-main);
             border: 1px dashed var(--border);
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.5rem;
         }
 
         .btn-upload:hover {
@@ -153,13 +157,11 @@
         .btn-primary {
             background-color: var(--accent);
             color: #fff;
+            margin-top: 1.5rem;
             margin-bottom: 0.75rem;
         }
 
-        .btn-primary:hover {
-            background-color: var(--accent-hover);
-        }
-        
+        .btn-primary:hover { background-color: var(--accent-hover); }
         .btn-primary:disabled {
             background-color: var(--border);
             color: var(--text-muted);
@@ -172,9 +174,7 @@
             border: 1px solid var(--accent);
         }
 
-        .btn-outline:hover {
-            background-color: rgba(14, 165, 233, 0.1);
-        }
+        .btn-outline:hover { background-color: rgba(14, 165, 233, 0.1); }
 
         /* SVG Container */
         #svg-container {
@@ -189,7 +189,7 @@
             max-width: 100%;
             max-height: 100%;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            background-color: transparent; /* Supports transparency natively */
+            background-color: transparent;
         }
 
         #loading {
@@ -197,22 +197,25 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(17, 24, 39, 0.9);
+            background: rgba(17, 24, 39, 0.95);
             padding: 1.5rem 2.5rem;
             border-radius: 8px;
             border: 1px solid var(--border);
             color: var(--accent);
             font-weight: 600;
             display: none;
+            flex-direction: column;
             align-items: center;
             gap: 12px;
             z-index: 20;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
+        
+        #loading-text { font-size: 0.85rem; color: var(--text-muted); font-weight: normal; }
 
         .spinner {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border: 3px solid rgba(14, 165, 233, 0.3);
             border-top-color: var(--accent);
             border-radius: 50%;
@@ -231,9 +234,9 @@
     <aside class="sidebar">
         <h1>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
-            Vector Screentone
+            VectorScreentone
         </h1>
-        <p class="subtitle">Editor Vetorial de Hachuras HQ</p>
+        <p class="subtitle">Motor Bezier de Esqueletização</p>
 
         <label class="btn btn-upload">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -241,25 +244,11 @@
             <input type="file" id="upload" accept="image/png, image/jpeg, image/webp">
         </label>
 
+        <div class="section-title">Contornos Vetoriais</div>
+        
         <div class="control-group">
             <div class="control-header">
-                <label>Densidade das Linhas</label>
-                <span class="val-display" id="val-density">6px</span>
-            </div>
-            <input type="range" id="density" min="3" max="15" value="6">
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label>Espessura do Traço (Stroke)</label>
-                <span class="val-display" id="val-stroke">1.0px</span>
-            </div>
-            <input type="range" id="stroke" min="0.2" max="3.0" step="0.1" value="1.0">
-        </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label>Sensibilidade do Contorno</label>
+                <label>Sensibilidade da Borda</label>
                 <span class="val-display" id="val-edge">80</span>
             </div>
             <input type="range" id="edge" min="10" max="200" value="80">
@@ -267,24 +256,42 @@
 
         <div class="control-group">
             <div class="control-header">
-                <label>Ângulo da Hachura</label>
+                <label>Suavização (Curvas Bezier)</label>
+                <span class="val-display" id="val-smoothing">2.0</span>
+            </div>
+            <input type="range" id="smoothing" min="0" max="10" step="0.5" value="2.0">
+        </div>
+
+        <div class="section-title">Sombreamento (Hachuras)</div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label>Densidade Base</label>
+                <span class="val-display" id="val-density">6px</span>
+            </div>
+            <input type="range" id="density" min="3" max="15" value="6">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label>Ângulo</label>
                 <span class="val-display" id="val-angle">45°</span>
             </div>
             <input type="range" id="angle" min="-90" max="90" value="45">
         </div>
 
+        <div class="section-title">Estilo Global</div>
+
         <div class="control-group">
             <div class="control-header">
-                <label>Jitter (Aspecto Manual)</label>
-                <span class="val-display" id="val-jitter">1.5</span>
+                <label>Espessura do Traço</label>
+                <span class="val-display" id="val-stroke">1.0px</span>
             </div>
-            <input type="range" id="jitter" min="0" max="5" step="0.1" value="1.5">
+            <input type="range" id="stroke" min="0.2" max="3.0" step="0.1" value="1.0">
         </div>
 
         <div style="margin-top: auto;">
-            <button id="btn-generate" class="btn btn-primary" disabled>
-                Gerar Arte Vetorial
-            </button>
+            <button id="btn-generate" class="btn btn-primary" disabled>Gerar Arte Vetorial</button>
             <button id="btn-export" class="btn btn-outline" style="display: none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Exportar SVG
@@ -294,14 +301,13 @@
 
     <main class="main-view">
         <div id="loading">
-            <div class="spinner"></div>
-            Calculando Vetores...
+            <div style="display: flex; gap:10px; align-items:center;">
+                <div class="spinner"></div> Processando Geometria...
+            </div>
+            <div id="loading-text">Calculando...</div>
         </div>
         <div id="svg-container">
-            <!-- SVG será injetado aqui -->
-            <div style="color: var(--border); font-size: 1.1rem; font-weight: 500;">
-                Nenhuma imagem carregada
-            </div>
+            <div style="color: var(--border); font-size: 1.1rem; font-weight: 500;">Nenhuma imagem carregada</div>
         </div>
         <canvas id="hidden-canvas"></canvas>
     </main>
@@ -322,16 +328,14 @@
         const canvas = document.getElementById('hidden-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
 
-        // Sliders
-        const controls = ['density', 'stroke', 'edge', 'angle', 'jitter'];
+        const controls = ['density', 'stroke', 'edge', 'smoothing', 'angle'];
         const settings = {};
 
         controls.forEach(id => {
             const el = document.getElementById(id);
             const valEl = document.getElementById(`val-${id}`);
-            
-            // Atualiza display dos valores em tempo real
             el.addEventListener('input', (e) => {
                 let suffix = '';
                 if(id === 'density' || id === 'stroke') suffix = 'px';
@@ -351,7 +355,6 @@
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
-                    // Limita a resolução máxima para garantir performance de geração vetorial
                     const MAX_SIZE = 1000;
                     let w = img.width;
                     let h = img.height;
@@ -367,158 +370,278 @@
                     canvas.width = w;
                     canvas.height = h;
 
-                    // Limpa e desenha a imagem original (suporta transparência)
                     ctx.clearRect(0, 0, w, h);
                     ctx.drawImage(img, 0, 0, w, h);
-                    
-                    // Extrai matriz de pixels
                     imgData = ctx.getImageData(0, 0, w, h);
                     btnGenerate.disabled = false;
                     
-                    svgContainer.innerHTML = `<div style="color: var(--accent); font-size: 1rem;">Imagem pronta. Clique em Gerar.</div>`;
+                    svgContainer.innerHTML = `<div style="color: var(--accent); font-size: 1rem;">Imagem pronta.</div>`;
                 };
                 img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
 
-        // --- Processamento Principal ---
+        // --- Execução Assíncrona para não travar a UI ---
         btnGenerate.addEventListener('click', () => {
             if (!imgData) return;
             
-            // Recolhe valores dos sliders
             settings.density = parseInt(document.getElementById('density').value);
             settings.stroke = parseFloat(document.getElementById('stroke').value);
             settings.edge = parseInt(document.getElementById('edge').value);
+            settings.smoothing = parseFloat(document.getElementById('smoothing').value);
             settings.angle = parseInt(document.getElementById('angle').value);
-            settings.jitter = parseFloat(document.getElementById('jitter').value);
 
             loading.style.display = 'flex';
+            btnExport.style.display = 'none';
             
-            // Timeout para permitir que a UI mostre o Loading antes do processamento pesado travar a thread
-            setTimeout(() => {
-                const svgString = processVectorArt();
-                currentSvgString = svgString;
-                svgContainer.innerHTML = svgString;
-                btnExport.style.display = 'flex';
-                loading.style.display = 'none';
-            }, 50);
+            // Quebra o processamento no event loop para a UI atualizar
+            requestAnimationFrame(() => {
+                setTimeout(() => runVectorPipeline(), 50);
+            });
         });
 
-        // --- Exportação ---
         btnExport.addEventListener('click', () => {
             if (!currentSvgString) return;
             const blob = new Blob([currentSvgString], { type: 'image/svg+xml' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'vector-screentone.svg';
+            a.download = 'vector-screentone-pro.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         });
 
-        // --- Algoritmos do Core Vetorial ---
+        // ==========================================
+        // ALGORITMOS DE PROCESSAMENTO VETORIAL CORE
+        // ==========================================
 
         function getPixelLuma(data, w, x, y) {
             if (x < 0 || x >= w || y < 0 || y >= imgHeight) return { luma: 255, alpha: 0 };
             const i = (y * w + x) * 4;
             const alpha = data[i + 3];
-            // Fórmula Luma standard HD
             const luma = (0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
             return { luma, alpha };
         }
 
-        function processVectorArt() {
+        function runVectorPipeline() {
             const w = imgWidth;
             const h = imgHeight;
             const data = imgData.data;
-            
-            let edgePaths = [];
-            let hatchPaths = [];
 
-            // 1. Deteção de Bordas (Filtro Sobel Simulado p/ Vetores)
+            // --- FASE 1: Deteção de Bordas (Sobel Binário) ---
+            loadingText.textContent = "1/4 Extraindo contornos...";
+            const binaryEdges = new Uint8Array(w * h);
             const threshold = settings.edge;
             
-            if (threshold < 200) { // Se 200, consideramos bordas desativadas na UI
-                for (let y = 1; y < h - 1; y++) {
-                    for (let x = 1; x < w - 1; x++) {
-                        const i = (y * w + x) * 4;
-                        // Ignora áreas totalmente transparentes para poupar cálculo
-                        if (data[i+3] < 50) continue; 
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    const i = (y * w + x) * 4;
+                    if (data[i+3] < 50) continue; 
 
-                        // Sobel X e Y simplificado (luma direta aproximada usando canal G para velocidade)
-                        const p00 = data[((y-1)*w + (x-1))*4 + 1]; const p10 = data[((y-1)*w + x)*4 + 1]; const p20 = data[((y-1)*w + (x+1))*4 + 1];
-                        const p01 = data[(y*w + (x-1))*4 + 1];                                            const p21 = data[(y*w + (x+1))*4 + 1];
-                        const p02 = data[((y+1)*w + (x-1))*4 + 1]; const p12 = data[((y+1)*w + x)*4 + 1]; const p22 = data[((y+1)*w + (x+1))*4 + 1];
+                    const p00 = data[((y-1)*w + (x-1))*4 + 1]; const p10 = data[((y-1)*w + x)*4 + 1]; const p20 = data[((y-1)*w + (x+1))*4 + 1];
+                    const p01 = data[(y*w + (x-1))*4 + 1];                                            const p21 = data[(y*w + (x+1))*4 + 1];
+                    const p02 = data[((y+1)*w + (x-1))*4 + 1]; const p12 = data[((y+1)*w + x)*4 + 1]; const p22 = data[((y+1)*w + (x+1))*4 + 1];
 
-                        const gx = (p20 + 2*p21 + p22) - (p00 + 2*p01 + p02);
-                        const gy = (p02 + 2*p12 + p22) - (p00 + 2*p10 + p20);
-                        
-                        const mag = Math.sqrt(gx*gx + gy*gy);
+                    const gx = (p20 + 2*p21 + p22) - (p00 + 2*p01 + p02);
+                    const gy = (p02 + 2*p12 + p22) - (p00 + 2*p10 + p20);
+                    
+                    if (Math.sqrt(gx*gx + gy*gy) > threshold) {
+                        binaryEdges[y * w + x] = 1;
+                    }
+                }
+            }
 
-                        if (mag > threshold) {
-                            // Cria um micro-segmento SVG. O linecap "round" fará parecer um ponto natural ou linha orgânica
-                            let jx = x + (Math.random() - 0.5) * settings.jitter;
-                            let jy = y + (Math.random() - 0.5) * settings.jitter;
-                            edgePaths.push(`M${jx.toFixed(1)},${jy.toFixed(1)}l0.5,0.5`);
+            // --- FASE 2: Esqueletização (Algoritmo Zhang-Suen) ---
+            loadingText.textContent = "2/4 Esqueletizando matrizes...";
+            
+            let changed = true;
+            let iterCount = 0;
+            const maxIters = 50; // Prevenção de loop infinito
+
+            function getNeighbors(x, y, grid) {
+                const idx = y * w + x;
+                return [
+                    grid[(y-1)*w + x],     // P2 (Top)
+                    grid[(y-1)*w + x+1],   // P3 (Top Right)
+                    grid[y*w + x+1],       // P4 (Right)
+                    grid[(y+1)*w + x+1],   // P5 (Bottom Right)
+                    grid[(y+1)*w + x],     // P6 (Bottom)
+                    grid[(y+1)*w + x-1],   // P7 (Bottom Left)
+                    grid[y*w + x-1],       // P8 (Left)
+                    grid[(y-1)*w + x-1]    // P9 (Top Left)
+                ];
+            }
+
+            while (changed && iterCount < maxIters) {
+                changed = false;
+                
+                // Duas sub-iterações do Zhang-Suen
+                for (let step = 0; step < 2; step++) {
+                    const toDelete = [];
+                    for (let y = 1; y < h - 1; y++) {
+                        for (let x = 1; x < w - 1; x++) {
+                            if (binaryEdges[y * w + x] === 1) {
+                                const n = getNeighbors(x, y, binaryEdges);
+                                const neighborsCount = n.reduce((a, b) => a + b, 0);
+                                
+                                if (neighborsCount >= 2 && neighborsCount <= 6) {
+                                    // Transições de 0->1
+                                    let transitions = 0;
+                                    for (let i = 0; i < 8; i++) {
+                                        if (n[i] === 0 && n[(i + 1) % 8] === 1) transitions++;
+                                    }
+                                    
+                                    if (transitions === 1) {
+                                        const m1 = step === 0 ? (n[0]*n[2]*n[4]) : (n[0]*n[2]*n[6]);
+                                        const m2 = step === 0 ? (n[2]*n[4]*n[6]) : (n[0]*n[4]*n[6]);
+                                        
+                                        if (m1 === 0 && m2 === 0) {
+                                            toDelete.push(y * w + x);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (toDelete.length > 0) {
+                        for (let i = 0; i < toDelete.length; i++) binaryEdges[toDelete[i]] = 0;
+                        changed = true;
+                    }
+                }
+                iterCount++;
+            }
+
+            // --- FASE 3: Tracing e Geração de Curvas (Vectorization) ---
+            loadingText.textContent = "3/4 Traçando curvas de Bézier...";
+            
+            const visited = new Uint8Array(w * h);
+            const dirs = [[1,0], [1,1], [0,1], [-1,1], [-1,0], [-1,-1], [0,-1], [1,-1]];
+            let vectorPaths = [];
+
+            // Função helper para achar um caminho linear contínuo (polilinha)
+            function tracePath(startX, startY) {
+                let pts = [];
+                let currX = startX;
+                let currY = startY;
+                
+                while(true) {
+                    pts.push({x: currX, y: currY});
+                    visited[currY * w + currX] = 1;
+                    
+                    let foundNext = false;
+                    for (let d of dirs) {
+                        let nx = currX + d[0], ny = currY + d[1];
+                        if (nx > 0 && nx < w-1 && ny > 0 && ny < h-1 && binaryEdges[ny*w + nx] === 1 && !visited[ny*w + nx]) {
+                            currX = nx;
+                            currY = ny;
+                            foundNext = true;
+                            break; // Pega o primeiro vizinho livre (comportamento de traço contínuo)
+                        }
+                    }
+                    if (!foundNext) break;
+                }
+                return pts;
+            }
+
+            // Algoritmo Ramer-Douglas-Peucker (Simplificação da Linha)
+            function rdp(points, epsilon) {
+                if (points.length < 3) return points;
+                let maxDist = 0;
+                let index = 0;
+                const end = points.length - 1;
+                
+                const sqrDist = (p, p1, p2) => {
+                    const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+                    if (l2 === 0) return Math.pow(p.x - p1.x, 2) + Math.pow(p.y - p1.y, 2);
+                    let t = ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2;
+                    t = Math.max(0, Math.min(1, t));
+                    return Math.pow(p.x - (p1.x + t * (p2.x - p1.x)), 2) + Math.pow(p.y - (p1.y + t * (p2.y - p1.y)), 2);
+                };
+
+                for (let i = 1; i < end; i++) {
+                    const d = sqrDist(points[i], points[0], points[end]);
+                    if (d > maxDist) { index = i; maxDist = d; }
+                }
+
+                if (maxDist > epsilon * epsilon) {
+                    const res1 = rdp(points.slice(0, index + 1), epsilon);
+                    const res2 = rdp(points.slice(index), epsilon);
+                    return res1.slice(0, -1).concat(res2);
+                } else {
+                    return [points[0], points[end]];
+                }
+            }
+
+            // Converter Pontos Simplificados para Smooth Quadratic Bezier Path
+            function pointsToSmoothSVG(pts) {
+                if (pts.length === 0) return "";
+                if (pts.length === 1) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} l0.1,0.1`;
+                if (pts.length === 2) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`;
+                
+                let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+                for (let i = 1; i < pts.length - 1; i++) {
+                    let xc = (pts[i].x + pts[i+1].x) / 2;
+                    let yc = (pts[i].y + pts[i+1].y) / 2;
+                    d += ` Q${pts[i].x.toFixed(1)},${pts[i].y.toFixed(1)} ${xc.toFixed(1)},${yc.toFixed(1)}`;
+                }
+                d += ` L${pts[pts.length-1].x.toFixed(1)},${pts[pts.length-1].y.toFixed(1)}`;
+                return d;
+            }
+
+            // Encontrar end-points (pontas de linhas) primeiro para melhor tracing
+            const eps = settings.smoothing;
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    if (binaryEdges[y*w + x] === 1 && !visited[y*w + x]) {
+                        const pts = tracePath(x, y);
+                        const simplified = eps > 0 ? rdp(pts, eps) : pts;
+                        if (simplified.length > 0) {
+                            vectorPaths.push(pointsToSmoothSVG(simplified));
                         }
                     }
                 }
             }
 
-            // 2. Geração de Hachuras / Screentone Vetorial
+            // --- FASE 4: Screentone (Hachuras Vetoriais) ---
+            loadingText.textContent = "4/4 Gerando malha de sombreamento...";
+            
+            let hatchPaths = [];
             const baseSpacing = settings.density;
             const angleRad = settings.angle * Math.PI / 180;
             const cosA = Math.cos(angleRad);
             const sinA = Math.sin(angleRad);
             const diag = Math.sqrt(w*w + h*h);
-            const cx_center = w / 2;
-            const cy_center = h / 2;
+            const cx = w / 2;
+            const cy = h / 2;
 
-            // Função para gerar uma camada de linhas paralelas vetoriais
             function generateHatchLayer(spacing, offset, minDarkness) {
-                // Varremos a imagem com a rotação aplicada
-                for (let y_prime = -diag/2 + offset; y_prime < diag/2; y_prime += spacing) {
+                for (let yp = -diag/2 + offset; yp < diag/2; yp += spacing) {
                     let isDrawing = false;
-                    
-                    // Avançamos ao longo da linha em pequenos saltos (resolução da linha)
-                    for (let x_prime = -diag/2; x_prime < diag/2; x_prime += 2) {
-                        // Converte as coordenadas rodadas de volta para o plano da imagem (x, y)
-                        let mapX = Math.floor(cx_center + x_prime * cosA - y_prime * sinA);
-                        let mapY = Math.floor(cy_center + x_prime * sinA + y_prime * cosA);
+                    for (let xp = -diag/2; xp < diag/2; xp += 2) {
+                        let mapX = Math.floor(cx + xp * cosA - yp * sinA);
+                        let mapY = Math.floor(cy + xp * sinA + yp * cosA);
 
                         if (mapX < 0 || mapX >= w || mapY < 0 || mapY >= h) {
-                            if (isDrawing) isDrawing = false;
+                            if (isDrawing) { isDrawing = false; }
                             continue;
                         }
 
                         const pInfo = getPixelLuma(data, w, mapX, mapY);
                         const darkness = 1.0 - (pInfo.luma / 255.0);
 
-                        // Critério: Não é transparente E é escuro o suficiente para esta camada
                         if (pInfo.alpha > 128 && darkness > minDarkness) {
                             if (!isDrawing) {
-                                // Inicia o caminho SVG
-                                let jx = mapX + (Math.random() - 0.5) * settings.jitter;
-                                let jy = mapY + (Math.random() - 0.5) * settings.jitter;
-                                hatchPaths.push(`M${jx.toFixed(1)},${jy.toFixed(1)}`);
+                                hatchPaths.push(`M${mapX.toFixed(1)},${mapY.toFixed(1)}`);
                                 isDrawing = true;
                             } else {
-                                // Apenas adicionamos nós ocasionais com jitter em linhas longas
-                                if (Math.random() > 0.8 && settings.jitter > 0) {
-                                    let jx = mapX + (Math.random() - 0.5) * settings.jitter;
-                                    let jy = mapY + (Math.random() - 0.5) * settings.jitter;
-                                    hatchPaths.push(`L${jx.toFixed(1)},${jy.toFixed(1)}`);
-                                }
+                                if (Math.random() > 0.9) hatchPaths.push(`L${mapX.toFixed(1)},${mapY.toFixed(1)}`);
                             }
                         } else {
                             if (isDrawing) {
-                                // Termina o segmento da linha vetorial
-                                let jx = mapX + (Math.random() - 0.5) * settings.jitter;
-                                let jy = mapY + (Math.random() - 0.5) * settings.jitter;
-                                hatchPaths.push(`L${jx.toFixed(1)},${jy.toFixed(1)}`);
+                                hatchPaths.push(`L${mapX.toFixed(1)},${mapY.toFixed(1)}`);
                                 isDrawing = false;
                             }
                         }
@@ -526,40 +649,39 @@
                 }
             }
 
-            // Geramos as hachuras em 3 passagens intercaladas progressivas:
-            // Intercalar previne que as linhas se sobreponham na perfeição, simulando espessamento/densidade real
-            
-            // Camada 1: Sombras leves (Muito espaçadas)
-            generateHatchLayer(baseSpacing * 3, 0, 0.2);
-            
-            // Camada 2: Sombras médias (Densidade média)
-            generateHatchLayer(baseSpacing * 1.5, baseSpacing * 1.5, 0.5);
-            
-            // Camada 3: Sombras profundas (Elevada densidade, quase preenchendo as ranhuras base)
-            generateHatchLayer(baseSpacing * 0.75, baseSpacing * 0.375, 0.8);
+            generateHatchLayer(baseSpacing * 4, 0, 0.15);
+            generateHatchLayer(baseSpacing * 2, baseSpacing * 2, 0.35);
+            generateHatchLayer(baseSpacing, baseSpacing, 0.55);
+            generateHatchLayer(baseSpacing * 0.5, baseSpacing * 0.5, 0.75);
+            generateHatchLayer(baseSpacing * 0.25, baseSpacing * 0.25, 0.90);
 
-            // 3. Compilação do SVG Final
-            // Fundimos milhares de micro-segmentos em apenas 2 nós `<path>` maciços
-            // Esta é a técnica de ouro para dominar a performance de renderização no SVG DOM!
-            
-            const edgePathString = edgePaths.join(' ');
-            const hatchPathString = hatchPaths.join(' ');
+            // --- MONTAGEM DO DOM SVG ---
+            const edgePathString = vectorPaths.join('\n');
+            const hatchPathString = hatchPaths.join('\n');
 
-            return `
+            currentSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
     <style>
-        .edge { stroke: #000000; stroke-width: ${settings.stroke * 1.2}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-        .hatch { stroke: #111111; stroke-width: ${settings.stroke}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        .edge { stroke: #0f172a; stroke-width: ${settings.stroke * 1.5}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        .hatch { stroke: #1e293b; stroke-width: ${settings.stroke}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
     </style>
-    <!-- Background Transparent Area -->
+    <!-- Background Transparente -->
     <rect width="${w}" height="${h}" fill="none" />
     
-    <!-- Render Hachuras Vetoriais -->
-    <path class="hatch" d="${hatchPathString}" />
-    
-    <!-- Render Bordas e Detalhes Vetoriais -->
-    <path class="edge" d="${edgePathString}" />
+    <!-- 1. Camada de Sombreamento Base -->
+    <g id="screentone-hatching">
+        <path class="hatch" d="${hatchPathString}" />
+    </g>
+
+    <!-- 2. Camada Estrutural (Contornos Suaves Bézier) desenhada por cima -->
+    <g id="vector-contours">
+        <path class="edge" d="${edgePathString}" />
+    </g>
 </svg>`;
+
+            svgContainer.innerHTML = currentSvgString;
+            loading.style.display = 'none';
+            btnExport.style.display = 'flex';
         }
     </script>
 </body>
