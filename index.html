@@ -283,10 +283,9 @@
         
         <div class="control-group">
             <div class="control-header">
-                <label>Detecção (Menos = Mais Detalhe)</label>
+                <label>Sensibilidade (Força da Linha)</label>
                 <span class="val-display" id="val-edge">35</span>
             </div>
-            <!-- Limite mais baixo captura detalhes preciosos como os olhos -->
             <input type="range" id="edge" min="10" max="150" value="35">
         </div>
 
@@ -329,13 +328,12 @@
                 <label>Espessura Fina (SVG Stroke)</label>
                 <span class="val-display" id="val-stroke">0.5px</span>
             </div>
-            <!-- O traço fino dá a aparência de ilustração manga pro -->
             <input type="range" id="stroke" min="0.1" max="2.0" step="0.1" value="0.5">
         </div>
 
         <div class="control-group">
             <label class="layer-toggle">
-                <span>1. Contornos Principais</span>
+                <span>1. Contornos Contínuos</span>
                 <input type="checkbox" id="toggle-contours" class="layer-checkbox" checked>
                 <div class="toggle-switch"></div>
             </label>
@@ -360,7 +358,7 @@
             <div style="display: flex; gap:10px; align-items:center;">
                 <div class="spinner"></div> Processando Vetores...
             </div>
-            <div id="loading-text">Extraindo 9 níveis de tonalidade...</div>
+            <div id="loading-text">Colando linhas e esqueletizando...</div>
         </div>
         <div id="svg-container">
             <div style="color: var(--border); font-size: 1.1rem; font-weight: 500;">Faça upload de uma imagem</div>
@@ -487,7 +485,7 @@
         });
 
         // ==========================================
-        // ALGORITMOS CORE (REFINADOS)
+        // ALGORITMOS CORE (LINHAS CONTÍNUAS PERFEITAS)
         // ==========================================
 
         function runVectorPipeline() {
@@ -495,32 +493,44 @@
             const h = imgHeight;
             const data = imgData.data;
 
-            // --- 1. Mapas de Imagem (Luma & Luma Suavizado para Contornos Limpos) ---
+            // --- 1. Mapas de Imagem (Luma & Blur) ---
             const lumaMap = new Float32Array(w * h);
             for(let i=0; i<w*h; i++) {
                 let idx = i*4;
                 lumaMap[i] = 0.299*data[idx] + 0.587*data[idx+1] + 0.114*data[idx+2];
             }
 
-            // Blur leve (apenas 3x3) para que a textura da roupa não quebre os contornos principais
-            const blurMap = new Float32Array(w * h);
-            for(let y=1; y<h-1; y++) {
-                for(let x=1; x<w-1; x++) {
-                    blurMap[y*w+x] = (
-                        lumaMap[(y-1)*w+x-1] + lumaMap[(y-1)*w+x] + lumaMap[(y-1)*w+x+1] +
-                        lumaMap[y*w+x-1] + lumaMap[y*w+x] + lumaMap[y*w+x+1] +
-                        lumaMap[(y+1)*w+x-1] + lumaMap[(y+1)*w+x] + lumaMap[(y+1)*w+x+1]
-                    ) / 9;
+            let blurMap = new Float32Array(w * h);
+            let tempMap = new Float32Array(w * h);
+            for(let i=0; i<w*h; i++) blurMap[i] = lumaMap[i];
+            
+            // 2 passagens de Blur para isolar as linhas estruturais da textura da roupa
+            for(let pass=0; pass<2; pass++) {
+                let src = pass === 0 ? blurMap : tempMap;
+                let dst = pass === 0 ? tempMap : blurMap;
+                for(let y=1; y<h-1; y++) {
+                    for(let x=1; x<w-1; x++) {
+                        dst[y*w+x] = (
+                            src[(y-1)*w+x-1] + 2*src[(y-1)*w+x] + src[(y-1)*w+x+1] +
+                            2*src[y*w+x-1]   + 4*src[y*w+x]   + 2*src[y*w+x+1] +
+                            src[(y+1)*w+x-1] + 2*src[(y+1)*w+x] + src[(y+1)*w+x+1]
+                        ) / 16;
+                    }
                 }
             }
 
-            // --- 2. Deteção de Contorno com Supressão Não-Máxima (1-pixel de espessura) ---
-            loadingText.textContent = "1/2 Forçando contornos de linha única (NMS)...";
+            // --- 2. Extração de Bordas (Sobel) e Limpeza de Margens ---
+            loadingText.textContent = "1/2 Esqueletizando e Soldando Bordas...";
             const mag = new Float32Array(w * h);
-            const dir = new Uint8Array(w * h);
             
             for(let y=1; y<h-1; y++) {
                 for(let x=1; x<w-1; x++) {
+                    // CORTA A BORDA FANTASMA: Se o pixel estiver na extremidade, ignora.
+                    if (x <= 4 || x >= w - 5 || y <= 4 || y >= h - 5) {
+                        mag[y*w+x] = 0;
+                        continue;
+                    }
+
                     let p00 = blurMap[(y-1)*w + x-1], p10 = blurMap[(y-1)*w + x], p20 = blurMap[(y-1)*w + x+1];
                     let p01 = blurMap[y*w + x-1],                                 p21 = blurMap[y*w + x+1];
                     let p02 = blurMap[(y+1)*w + x-1], p12 = blurMap[(y+1)*w + x], p22 = blurMap[(y+1)*w + x+1];
@@ -529,44 +539,84 @@
                     let gy = (p02 + 2*p12 + p22) - (p00 + 2*p10 + p20);
                     
                     mag[y*w+x] = Math.sqrt(gx*gx + gy*gy);
-                    
-                    let angle = Math.atan2(gy, gx);
-                    let angDeg = angle * (180 / Math.PI);
-                    if (angDeg < 0) angDeg += 180;
-                    
-                    if ((angDeg >= 0 && angDeg < 22.5) || (angDeg >= 157.5 && angDeg <= 180)) dir[y*w+x] = 0; 
-                    else if (angDeg >= 22.5 && angDeg < 67.5) dir[y*w+x] = 1;
-                    else if (angDeg >= 67.5 && angDeg < 112.5) dir[y*w+x] = 2;
-                    else dir[y*w+x] = 3;
                 }
             }
 
-            // NMS: Supressão para garantir espessura de 1 pixel geométrico
-            const nms = new Float32Array(w * h);
-            const threshold = settings.edge;
-            for(let y=1; y<h-1; y++) {
-                for(let x=1; x<w-1; x++) {
-                    let m = mag[y*w+x];
-                    if (m < threshold) continue;
-                    
-                    let m1=0, m2=0;
-                    if (dir[y*w+x] === 0) { m1 = mag[y*w + x-1]; m2 = mag[y*w + x+1]; } 
-                    else if (dir[y*w+x] === 1) { m1 = mag[(y-1)*w + x+1]; m2 = mag[(y+1)*w + x-1]; } 
-                    else if (dir[y*w+x] === 2) { m1 = mag[(y-1)*w + x]; m2 = mag[(y+1)*w + x]; } 
-                    else { m1 = mag[(y-1)*w + x-1]; m2 = mag[(y+1)*w + x+1]; } 
-                    
-                    if (m >= m1 && m >= m2) {
-                        nms[y*w+x] = m;
+            // --- 3. Thresholding de Hysteresis (Soldagem de Linhas Fracas) ---
+            // Em vez de usar NMS que estilhaça a linha, usamos Hysteresis para criar 
+            // máscaras grossas perfeitamente conectadas, e depois afinamos.
+            const edgesMap = new Uint8Array(w * h);
+            const stack = [];
+            const highThresh = settings.edge;
+            const lowThresh = settings.edge * 0.25; // Permite unir falhas bem escuras
+
+            for(let y=2; y<h-2; y++) {
+                for(let x=2; x<w-2; x++) {
+                    if (mag[y*w+x] >= highThresh) {
+                        edgesMap[y*w+x] = 1;
+                        stack.push(x, y);
                     }
                 }
             }
 
-            // Traçar contornos limpos a partir do NMS
-            const visited = new Uint8Array(w * h);
-            const dirs8 = [[1,0], [1,1], [0,1], [-1,1], [-1,0], [-1,-1], [0,-1], [1,-1]];
-            let edgePaths = [];
+            // Propaga pelas linhas mais fracas coladas às fortes
+            while(stack.length > 0) {
+                let cy = stack.pop();
+                let cx = stack.pop();
 
-            // RDP (Suavização simplificada)
+                for(let dy=-1; dy<=1; dy++) {
+                    for(let dx=-1; dx<=1; dx++) {
+                        if(dx===0 && dy===0) continue;
+                        let nx = cx+dx, ny = cy+dy;
+                        if(nx>=2 && nx<w-2 && ny>=2 && ny<h-2) {
+                            let idx = ny*w+nx;
+                            if(edgesMap[idx] === 0 && mag[idx] >= lowThresh) {
+                                edgesMap[idx] = 1;
+                                stack.push(nx, ny);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- 4. Esqueletização Zhang-Suen (Reduz a 1 Pixel Geométrico Perfeito) ---
+            let changed = true;
+            let iterCount = 0;
+            while(changed && iterCount < 15) {
+                changed = false;
+                for(let step=0; step<2; step++) {
+                    const toDelete = [];
+                    for(let y=2; y<h-2; y++) {
+                        for(let x=2; x<w-2; x++) {
+                            if(edgesMap[y*w+x] === 1) {
+                                let p2=edgesMap[(y-1)*w+x], p3=edgesMap[(y-1)*w+x+1], p4=edgesMap[y*w+x+1], p5=edgesMap[(y+1)*w+x+1],
+                                    p6=edgesMap[(y+1)*w+x], p7=edgesMap[(y+1)*w+x-1], p8=edgesMap[y*w+x-1], p9=edgesMap[(y-1)*w+x-1];
+                                
+                                let A = (p2==0&&p3==1) + (p3==0&&p4==1) + (p4==0&&p5==1) + (p5==0&&p6==1) +
+                                        (p6==0&&p7==1) + (p7==0&&p8==1) + (p8==0&&p9==1) + (p9==0&&p2==1);
+                                let B = p2+p3+p4+p5+p6+p7+p8+p9;
+                                
+                                if(B>=2 && B<=6 && A===1) {
+                                    let m1 = step===0 ? (p2*p4*p6) : (p2*p4*p8);
+                                    let m2 = step===0 ? (p4*p6*p8) : (p2*p6*p8);
+                                    if(m1===0 && m2===0) toDelete.push(y*w+x);
+                                }
+                            }
+                        }
+                    }
+                    if(toDelete.length > 0) {
+                        for(let i=0; i<toDelete.length; i++) edgesMap[toDelete[i]] = 0;
+                        changed = true;
+                    }
+                }
+                iterCount++;
+            }
+
+            // --- 5. Rastreamento (Tracing) do Esqueleto 1px ---
+            const visited = new Uint8Array(w * h);
+            let edgePaths = [];
+            const dirs8 = [[1,0], [1,1], [0,1], [-1,1], [-1,0], [-1,-1], [0,-1], [1,-1]];
+
             function rdp(points, epsilon) {
                 if (points.length < 3) return points;
                 let maxDist = 0, index = 0;
@@ -586,58 +636,91 @@
                 } else return [points[0], points[end]];
             }
 
-            for(let y=1; y<h-1; y++) {
-                for(let x=1; x<w-1; x++) {
-                    if(nms[y*w+x] > 0 && !visited[y*w+x]) {
+            function pointsToSmoothSVG(pts) {
+                if (pts.length === 0) return "";
+                if (pts.length === 1) return `M${pts[0].x},${pts[0].y} l0.1,0.1`;
+                if (pts.length === 2) return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`;
+
+                let d = `M${pts[0].x},${pts[0].y}`;
+                for (let i = 1; i < pts.length - 1; i++) {
+                    let xc = (pts[i].x + pts[i+1].x) / 2;
+                    let yc = (pts[i].y + pts[i+1].y) / 2;
+                    // Comando de Curva Quadrática Bezier (Q)
+                    d += ` Q${pts[i].x},${pts[i].y} ${xc},${yc}`;
+                }
+                d += ` L${pts[pts.length-1].x},${pts[pts.length-1].y}`;
+                return d;
+            }
+
+            for(let y=2; y<h-2; y++) {
+                for(let x=2; x<w-2; x++) {
+                    if(edgesMap[y*w+x] === 1 && !visited[y*w+x]) {
                         let pts = [];
                         let cx = x, cy = y;
+                        
                         while(true) {
                             pts.push({x: cx, y: cy});
                             visited[cy*w+cx] = 1;
-                            let bestM = -1, bestX = -1, bestY = -1;
+                            
+                            let found = false;
                             for(let d of dirs8) {
-                                let nx = cx + d[0], ny = cy + d[1];
-                                if(nx>0 && nx<w-1 && ny>0 && ny<h-1 && !visited[ny*w+nx] && nms[ny*w+nx] > 0) {
-                                    if(nms[ny*w+nx] > bestM) { bestM = nms[ny*w+nx]; bestX = nx; bestY = ny; }
+                                let nx = cx+d[0], ny = cy+d[1];
+                                if(nx>=0 && nx<w && ny>=0 && ny<h && edgesMap[ny*w+nx]===1 && !visited[ny*w+nx]) {
+                                    cx = nx; cy = ny;
+                                    found = true;
+                                    break;
                                 }
                             }
-                            if(bestM !== -1) { cx = bestX; cy = bestY; } else break;
+                            
+                            // Se bater num beco, tentar procurar 2 pixels ao redor (Gaps microscópicos residuais)
+                            if (!found) {
+                                for(let dy=-2; dy<=2; dy++) {
+                                    for(let dx=-2; dx<=2; dx++) {
+                                        if(Math.abs(dx)<=1 && Math.abs(dy)<=1) continue;
+                                        let nx = cx+dx, ny = cy+dy;
+                                        if(nx>=0 && nx<w && ny>=0 && ny<h && edgesMap[ny*w+nx]===1 && !visited[ny*w+nx]) {
+                                            cx = nx; cy = ny;
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                    if(found) break;
+                                }
+                            }
+                            if(!found) break;
                         }
-                        if (pts.length > settings.noise) { // Remove ruído e artefactos isolados
-                            let simp = rdp(pts, 1.0);
-                            let d = `M${simp[0].x},${simp[0].y}`;
-                            for(let i=1; i<simp.length; i++) d += ` L${simp[i].x},${simp[i].y}`;
-                            edgePaths.push(d);
+                        
+                        if (pts.length > settings.noise) {
+                            let simp = rdp(pts, 1.2);
+                            edgePaths.push(pointsToSmoothSVG(simp));
                         }
                     }
                 }
             }
 
-            // --- 3. Sombreamento Contínuo com Múltiplos Tons (A Magia do Degradê) ---
-            loadingText.textContent = "2/2 A construir gradientes dinâmicos (9 tons)...";
+            // --- 6. Sombreamento Contínuo com Múltiplos Tons ---
+            loadingText.textContent = "2/2 Aplicando 4 níveis de sombra em cascata...";
             let hatchPaths = [];
-            const baseSpacing = settings.density; // e.g. 2px
+            const baseSpacing = settings.density;
 
-            // Função que gera linhas, subdividindo o espaçamento conforme a escuridão
             function drawDynamicHatch(baseAngle, thresholds) {
                 const angleRad = baseAngle * Math.PI / 180;
                 const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
                 const diag = Math.sqrt(w*w + h*h);
                 let currentLayerPath = "";
 
-                // Varrimento ao longo da imagem
-                for (let p = -diag/2; p < diag/2; p += baseSpacing) {
-                    // Descobrir que "Nível" de linha é esta
-                    let lineIndex = Math.round((p + diag/2) / baseSpacing);
+                let stepSize = 1; 
+                
+                for (let p = -diag/2; p < diag/2; p += stepSize) {
                     
-                    let minDarkness = 1.0;
-                    // Linhas principais (aparecem nos tons claros) -> Distância: baseSpacing * 4
-                    if (lineIndex % 4 === 0) minDarkness = thresholds[0];
-                    // Linhas secundárias (aparecem nos tons médios) -> Distância: baseSpacing * 2
-                    else if (lineIndex % 2 === 0) minDarkness = thresholds[1];
-                    // Linhas terciárias (aparecem só nos escuros) -> Distância: baseSpacing * 1
-                    else minDarkness = thresholds[2];
+                    let lineMod = Math.abs(p % (baseSpacing * 4));
+                    let minDarkness = 2.0; 
                     
+                    if (lineMod < 0.5) minDarkness = thresholds[0]; // Primária
+                    else if (Math.abs(lineMod - (baseSpacing * 2)) < 0.5) minDarkness = thresholds[1]; // Secundária
+                    else if (Math.abs(lineMod % baseSpacing) < 0.5) minDarkness = thresholds[2]; // Terciária
+                    else minDarkness = thresholds[3]; // Restantes (Massa Negra / Preto Sólido)
+
                     if (minDarkness >= 1.0) continue;
 
                     let isDrawing = false;
@@ -658,7 +741,7 @@
                                 currentLayerPath += `M${px},${py} `;
                                 isDrawing = true;
                             }
-                            lastValidX = px; lastValidY = py; // Otimização extrema de SVG (só pontos chave)
+                            lastValidX = px; lastValidY = py; 
                         } else {
                             if (isDrawing) {
                                 currentLayerPath += `L${lastValidX},${lastValidY} `;
@@ -673,40 +756,30 @@
                 if (currentLayerPath.length > 0) hatchPaths.push(currentLayerPath);
             }
 
-            // Geração em 3 Direções (Até 9 níveis de densidade acumulada!)
-            
-            // 1ª Direção (Linhas Base / 45º)
-            // Tons claros (>0.1) disparam a linha principal. Tons escuros (>0.55) disparam as secundárias
-            drawDynamicHatch(settings.angle, [0.10, 0.30, 0.55]);
-            
-            // 2ª Direção (Cross Hatching perpendicular / -45º)
-            // Apenas entra em ação a partir de sombras médias (>0.40)
-            drawDynamicHatch(settings.angle + 90, [0.40, 0.65, 0.80]);
-            
-            // 3ª Direção (Profundidade Extrema para as partes quase pretas do casaco)
-            drawDynamicHatch(settings.angle + 45, [0.70, 0.85, 0.95]);
-
+            // Geração em 3 Direções com o 4º nível extra escuro
+            drawDynamicHatch(settings.angle, [0.10, 0.35, 0.60, 0.85]); 
+            drawDynamicHatch(settings.angle + 90, [0.40, 0.65, 0.75, 0.90]);
+            drawDynamicHatch(settings.angle + 45, [0.65, 0.80, 0.90, 0.95]);
 
             // --- MONTAGEM DO DOM SVG ---
-            const edgePathString = edgePaths.join(' ');
-            const hatchPathString = hatchPaths.join(' ');
+            const edgePathString = edgePaths.join('\n');
+            const hatchPathString = hatchPaths.join('\n');
 
-            // Contorno (edge) fica 1.8x mais espesso que a hachura (hatch), dando o aspeto "Inked"
             currentSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
     <style>
-        .edge { stroke: #050505; stroke-width: ${settings.stroke * 1.8}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-        .hatch { stroke: #1a1a1a; stroke-width: ${settings.stroke}px; stroke-linecap: round; stroke-linejoin: round; fill: none; opacity: 0.9; }
+        .edge { stroke: #000000; stroke-width: ${settings.stroke * 2.0}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        .hatch { stroke: #0f0f0f; stroke-width: ${settings.stroke}px; stroke-linecap: round; stroke-linejoin: round; fill: none; opacity: 0.95; }
     </style>
     
     <rect id="layer-bg" width="${w}" height="${h}" fill="#ffffff" />
     
-    <!-- 1. CAMADA INFERIOR: Sombreamento Dinâmico em Cascata -->
+    <!-- 1. CAMADA INFERIOR: Sombreamento Dinâmico em Cascata (Inclui Preto Sólido) -->
     <g id="layer-hatching">
         <path class="hatch" d="${hatchPathString}" />
     </g>
 
-    <!-- 2. CAMADA SUPERIOR: Contornos Exatos de Caneta (1 Pixel Line) -->
+    <!-- 2. CAMADA SUPERIOR: Contornos Exatos de Caneta (Bézier Curves Contínuas) -->
     <g id="layer-contours">
         <path class="edge" d="${edgePathString}" />
     </g>
