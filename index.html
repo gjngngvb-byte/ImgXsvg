@@ -294,7 +294,6 @@
                 <label>Filtro de Textura (Blur)</label>
                 <span class="val-display" id="val-blur">3</span>
             </div>
-            <!-- Remove linhas da roupa/textura antes de detetar contornos -->
             <input type="range" id="blur" min="0" max="10" value="3">
         </div>
 
@@ -303,7 +302,6 @@
                 <label>Filtro de Sujidade (Tamanho)</label>
                 <span class="val-display" id="val-noise">15</span>
             </div>
-            <!-- Remove linhas curtas soltas -->
             <input type="range" id="noise" min="0" max="50" value="15">
         </div>
 
@@ -315,11 +313,15 @@
             <input type="range" id="smooth" min="1" max="10" value="5">
         </div>
 
-        <div class="section-title">Hachuras (Layer 2)</div>
+        <div class="section-title">Hachuras & Estilos (Layer 2)</div>
 
         <div class="control-group">
             <select id="pattern">
-                <option value="dynamic-hatch" selected>Screentone Dinâmico</option>
+                <option value="parallel">🖊️ Hachura Paralela</option>
+                <option value="cross" selected>✖️ Hachura Cruzada (Cross-Hatch)</option>
+                <option value="contour">🔁 Hachura Contornada (Volume 3D)</option>
+                <option value="circular">🌪️ Hachura Circular (Circulism)</option>
+                <option value="scribble">🌫️ Hachura Livre (Scribble)</option>
             </select>
         </div>
 
@@ -329,6 +331,15 @@
                 <span class="val-display" id="val-density">3px</span>
             </div>
             <input type="range" id="density" min="2" max="6" value="3">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label>Espalhamento (Volume de Traços)</label>
+                <span class="val-display" id="val-spread">1</span>
+            </div>
+            <!-- Multiplica as hachuras sem afetar a lógica base de densidade -->
+            <input type="range" id="spread" min="1" max="5" value="1">
         </div>
 
         <div class="section-title">Apresentação (3 Camadas)</div>
@@ -397,7 +408,6 @@
         const loading = document.getElementById('loading');
         const loadingText = document.getElementById('loading-text');
 
-        // Controlos de Camada
         const toggleL1 = document.getElementById('toggle-layer1');
         const toggleL2 = document.getElementById('toggle-layer2');
         const toggleL3 = document.getElementById('toggle-layer3');
@@ -419,7 +429,7 @@
         toggleL2.addEventListener('change', updateLayerVisibility);
         toggleL3.addEventListener('change', updateLayerVisibility);
 
-        const controls = ['density', 'stroke', 'edge', 'noise', 'smooth', 'blur'];
+        const controls = ['density', 'stroke', 'edge', 'noise', 'smooth', 'blur', 'spread'];
         const settings = {};
 
         controls.forEach(id => {
@@ -429,6 +439,7 @@
             el.addEventListener('input', (e) => {
                 let suffix = '';
                 if(id === 'stroke' || id === 'density') suffix = 'px';
+                if(id === 'spread') suffix = 'x';
                 valEl.textContent = e.target.value + suffix;
             });
         });
@@ -465,7 +476,7 @@
                     imgData = ctx.getImageData(0, 0, w, h);
                     btnGenerate.disabled = false;
                     
-                    svgContainer.innerHTML = `<div style="color: var(--accent); font-size: 1rem;">Imagem pronta! Ajuste os controlos e gere.</div>`;
+                    svgContainer.innerHTML = `<div style="color: var(--accent); font-size: 1rem;">Imagem pronta! Selecione as Hachuras e gere.</div>`;
                 };
                 img.src = event.target.result;
             };
@@ -481,6 +492,8 @@
             settings.noise = parseInt(document.getElementById('noise').value);
             settings.smooth = parseInt(document.getElementById('smooth').value);
             settings.blur = parseInt(document.getElementById('blur').value);
+            settings.spread = parseInt(document.getElementById('spread').value);
+            settings.pattern = document.getElementById('pattern').value;
 
             loading.style.display = 'flex';
             btnExport.style.display = 'none';
@@ -506,7 +519,7 @@
         });
 
         // ==========================================
-        // ALGORITMOS CORE (GAP JUMPING + BÉZIER)
+        // ALGORITMOS CORE
         // ==========================================
 
         function runVectorPipeline() {
@@ -514,18 +527,17 @@
             const h = imgHeight;
             const data = imgData.data;
 
-            // --- 1. Luma (Guardado intacto para as Hachuras) ---
+            // --- 1. Luma (Guardado intacto para as Hachuras da Camada 2) ---
             const lumaMap = new Float32Array(w * h);
             for(let i=0; i<w*h; i++) {
                 lumaMap[i] = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2];
             }
 
-            // --- 1B. Filtro de Textura Forte (Exclusivo para os Contornos) ---
+            // --- 1B. Filtro de Textura Forte (Exclusivo para Contornos Perfeitos na Camada 1) ---
             const blurMap = new Float32Array(w * h);
             const tempMap = new Float32Array(w * h);
             for(let i=0; i<w*h; i++) blurMap[i] = lumaMap[i];
             
-            // Applica Gaussian Blur X vezes conforme o utilizador pediu (mata a textura da roupa)
             for(let pass=0; pass < settings.blur; pass++) {
                 let src = pass === 0 ? blurMap : tempMap;
                 let dst = pass === 0 ? tempMap : blurMap;
@@ -539,7 +551,6 @@
                     }
                 }
             }
-            // Garante que o blurMap final tem o resultado
             if (settings.blur % 2 !== 0) {
                 for(let i=0; i<w*h; i++) blurMap[i] = tempMap[i];
             }
@@ -551,7 +562,6 @@
             
             for(let y=1; y<h-1; y++) {
                 for(let x=1; x<w-1; x++) {
-                    // PREVINE TOTALMENTE A BORDA EXTERNA (MARGEM DE SEGURANÇA 8px)
                     if (x <= 8 || x >= w - 8 || y <= 8 || y >= h - 8) {
                         mag[y*w+x] = 0;
                         continue;
@@ -577,7 +587,7 @@
                 }
             }
 
-            // --- 3. Supressão Não-Máxima (Garante 1 pixel de espessura inicial) ---
+            // --- 3. Supressão Não-Máxima ---
             const nms = new Float32Array(w * h);
             for(let y=2; y<h-2; y++) {
                 for(let x=2; x<w-2; x++) {
@@ -594,10 +604,10 @@
                 }
             }
 
-            // --- 4. Hysteresis Global para criar o mapa de pixels de aresta puros ---
+            // --- 4. Hysteresis Global ---
             const edgesMap = new Uint8Array(w * h);
             const highThresh = settings.edge;
-            const lowThresh = settings.edge * 0.3; // Linhas fracas que devem colar às fortes
+            const lowThresh = settings.edge * 0.3; 
             
             let stack = [];
             for(let y=2; y<h-2; y++) {
@@ -624,62 +634,47 @@
                 }
             }
 
-            // --- 5. Rastreamento com "GAP-JUMPING" (O FIM DOS SALTOS E QUEBRAS) ---
+            // --- 5. Rastreamento e Bézier (A Lógica Perfeita de Contornos da Camada 1) ---
             loadingText.textContent = "2/3 Soldando linhas e a aplicar curvas Bézier...";
             const visited = new Uint8Array(w * h);
             let edgePaths = [];
 
-            // A inteligência: Tenta colar pixels adjacentes, mas se falhar, tenta saltar buracos
             function findNext(cx, cy) {
-                // Prioridade 1: Vizinhos colados normais
                 for(let d of dirs8) {
                     let nx = cx+d[0], ny = cy+d[1];
                     if(nx>=0 && nx<w && ny>=0 && ny<h && edgesMap[ny*w+nx]===1 && !visited[ny*w+nx]) {
                         return {x:nx, y:ny};
                     }
                 }
-                
-                // Prioridade 2: Gap Jump (Salto de Raio 2) por cima das falhas do NMS
                 for(let dy=-2; dy<=2; dy++) {
                     for(let dx=-2; dx<=2; dx++) {
                         if(Math.abs(dx) <= 1 && Math.abs(dy) <= 1) continue;
                         let nx = cx+dx, ny = cy+dy;
                         if(nx>=0 && nx<w && ny>=0 && ny<h && edgesMap[ny*w+nx]===1 && !visited[ny*w+nx]) {
-                            // Verifica se o pixel do meio partilha da magnitude alta da linha (Evita ligar linhas não relacionadas)
-                            let midX = cx + Math.round(dx/2);
-                            let midY = cy + Math.round(dy/2);
-                            if (mag[midY*w+midX] >= lowThresh * 0.8) {
-                                return {x:nx, y:ny};
-                            }
+                            let midX = cx + Math.round(dx/2), midY = cy + Math.round(dy/2);
+                            if (mag[midY*w+midX] >= lowThresh * 0.8) return {x:nx, y:ny};
                         }
                     }
                 }
-                
-                // Prioridade 3: Extremo Gap Jump (Raio 3) para cantos perigosos obliterados
                 for(let dy=-3; dy<=3; dy++) {
                     for(let dx=-3; dx<=3; dx++) {
                         if(Math.abs(dx) <= 2 && Math.abs(dy) <= 2) continue;
                         let nx = cx+dx, ny = cy+dy;
                         if(nx>=0 && nx<w && ny>=0 && ny<h && edgesMap[ny*w+nx]===1 && !visited[ny*w+nx]) {
-                            let midX = cx + Math.round(dx/2);
-                            let midY = cy + Math.round(dy/2);
-                            if (mag[midY*w+midX] >= lowThresh) {
-                                return {x:nx, y:ny};
-                            }
+                            let midX = cx + Math.round(dx/2), midY = cy + Math.round(dy/2);
+                            if (mag[midY*w+midX] >= lowThresh) return {x:nx, y:ny};
                         }
                     }
                 }
                 return null;
             }
 
-            // Funções de Suavização Matemática
             function smoothPath(pts, passes) {
                 if (pts.length < 3 || passes === 0) return pts;
                 let current = pts;
                 for (let p = 0; p < passes; p++) {
                     let next = [{x: current[0].x, y: current[0].y}];
                     for (let i = 1; i < current.length - 1; i++) {
-                        // Suavização agressiva (25%, 50%, 25%) que engoma os ângulos
                         next.push({
                             x: (current[i-1].x * 0.25 + current[i].x * 0.5 + current[i+1].x * 0.25),
                             y: (current[i-1].y * 0.25 + current[i].y * 0.5 + current[i+1].y * 0.25)
@@ -715,7 +710,6 @@
                 if (pts.length === 1) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} l0.1,0.1`;
                 if (pts.length === 2) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`;
 
-                // Usa as curvas quadráticas de bezier para suavidade absoluta
                 let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
                 for (let i = 1; i < pts.length - 1; i++) {
                     let xc = (pts[i].x + pts[i+1].x) / 2;
@@ -726,13 +720,10 @@
                 return d;
             }
 
-            // O Loop de Rastreamento
             for (let y=2; y<h-2; y++) {
                 for (let x=2; x<w-2; x++) {
                     if (edgesMap[y*w+x] === 1 && !visited[y*w+x]) {
                         let path = [];
-                        
-                        // Rastrear para a Frente
                         let cx = x, cy = y;
                         while(true) {
                             path.push({x: cx, y: cy});
@@ -741,7 +732,6 @@
                             if (n) { cx = n.x; cy = n.y; } else break;
                         }
 
-                        // Rastrear para Trás
                         cx = x; cy = y;
                         while(true) {
                             let n = findNext(cx, cy);
@@ -752,10 +742,8 @@
                             } else break;
                         }
 
-                        // FILTRO DE RUÍDO: Descarta as linhas de textura/pó demasiado curtas
                         if (path.length >= settings.noise) {
                             let smoothed = smoothPath(path, settings.smooth);
-                            // RDP suave para não descaraterizar a fluidez (0.8 é perfeito)
                             let simplified = rdp(smoothed, 0.8);
                             edgePaths.push(pathToBezierSVG(simplified));
                         }
@@ -763,21 +751,23 @@
                 }
             }
 
-            // --- 6. Sombreamento Contínuo (Hachuras Dinâmicas Perfeitas Mantidas intactas) ---
-            // Usa o lumaMap ORIGINAL não desfocado para manter as texturas exatas!
+            // --- 6. HACHURAS AVANÇADAS (Camada 2 - Novos Padrões e Espalhamento) ---
             loadingText.textContent = "3/3 Aplicando Sombreamento (Screentone Cascata)...";
             let hatchPaths = [];
             const baseSpacing = settings.density;
+            const spreadFactor = settings.spread; 
 
-            function drawDynamicHatch(baseAngle, thresholds) {
+            // ALGORITMO ORIGINAL MANTIDO 100% INTACTO (Usado para Parallel e Cross-Hatching)
+            function drawDynamicHatch(baseAngle, thresholds, offsetP = 0) {
                 const angleRad = baseAngle * Math.PI / 180;
                 const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
                 const diag = Math.sqrt(w*w + h*h);
                 let currentLayerPath = "";
                 let stepSize = 1; 
                 
-                for (let p = -diag/2; p < diag/2; p += stepSize) {
-                    let lineMod = Math.abs(p % (baseSpacing * 4));
+                for (let p = -diag/2 + offsetP; p < diag/2; p += stepSize) {
+                    // O módulo baseia-se na matemática base, o offset desloca fisicamente a linha sem quebrar a proporção
+                    let lineMod = Math.abs((p - offsetP) % (baseSpacing * 4));
                     let minDarkness = 2.0; 
                     
                     if (lineMod < 0.5) minDarkness = thresholds[0]; 
@@ -820,10 +810,87 @@
                 if (currentLayerPath.length > 0) hatchPaths.push(currentLayerPath);
             }
 
-            // Geração em 3 Direções com 4 níveis
-            drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85]); 
-            drawDynamicHatch(135, [0.40, 0.65, 0.75, 0.90]);
-            drawDynamicHatch(90, [0.65, 0.80, 0.90, 0.95]);
+            // ALGORITMOS NOVOS (Rústicos, Circulares e Contorno - Baseados na Célula Original)
+            function drawOrganicHatch(style, thresholds) {
+                let currentLayerPath = "";
+                let step = baseSpacing;
+                
+                for(let y=step; y<h-step; y+=step) {
+                    for(let x=step; x<w-step; x+=step) {
+                        let luma = lumaMap[y*w+x];
+                        let darkness = 1.0 - (luma / 255.0);
+                        
+                        let tier = 0;
+                        if (darkness >= thresholds[3]) tier = 4;
+                        else if (darkness >= thresholds[2]) tier = 3;
+                        else if (darkness >= thresholds[1]) tier = 2;
+                        else if (darkness >= thresholds[0]) tier = 1;
+                        
+                        if (tier === 0) continue;
+                        
+                        // O fator de espalhamento multiplica o volume de traços injetados orgânicamente
+                        let numStrokes = tier * spreadFactor; 
+                        
+                        for(let i=0; i<numStrokes; i++) {
+                            let cx = x + (Math.random() - 0.5) * step * 1.5;
+                            let cy = y + (Math.random() - 0.5) * step * 1.5;
+                            let sz = step * (0.8 + Math.random()*0.4);
+                            
+                            if (style === 'scribble') {
+                                currentLayerPath += `M${cx.toFixed(1)},${cy.toFixed(1)} `;
+                                for(let s=0; s<3; s++) {
+                                    let nx = cx + (Math.random()-0.5)*sz*4;
+                                    let ny = cy + (Math.random()-0.5)*sz*4;
+                                    let c1x = cx + (Math.random()-0.5)*sz*3;
+                                    let c1y = cy + (Math.random()-0.5)*sz*3;
+                                    currentLayerPath += `Q${c1x.toFixed(1)},${c1y.toFixed(1)} ${nx.toFixed(1)},${ny.toFixed(1)} `;
+                                    cx = nx; cy = ny;
+                                }
+                            } else if (style === 'circular') {
+                                let r = sz * 0.7;
+                                currentLayerPath += `M${(cx-r).toFixed(1)},${cy.toFixed(1)} A${r.toFixed(1)},${r.toFixed(1)} 0 1,1 ${(cx+r).toFixed(1)},${cy.toFixed(1)} A${r.toFixed(1)},${r.toFixed(1)} 0 1,1 ${(cx-r).toFixed(1)},${cy.toFixed(1)} `;
+                            } else if (style === 'contour') {
+                                // O grande truque de volume 3D: Lemos a vizinhança de Luma para detetar a orientação geométrica natural da superfície
+                                let p01 = lumaMap[y*w + x-1] || 0, p21 = lumaMap[y*w + x+1] || 0;
+                                let p10 = lumaMap[(y-1)*w + x] || 0, p12 = lumaMap[(y+1)*w + x] || 0;
+                                let gx = p21 - p01;
+                                let gy = p12 - p10;
+                                let angle = Math.atan2(gy, gx) + Math.PI/2; 
+                                
+                                angle += (Math.random()-0.5)*0.4;
+                                let len = sz * 1.2;
+                                let x1 = cx - Math.cos(angle)*len;
+                                let y1 = cy - Math.sin(angle)*len;
+                                let x2 = cx + Math.cos(angle)*len;
+                                let y2 = cy + Math.sin(angle)*len;
+                                currentLayerPath += `M${x1.toFixed(1)},${y1.toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} `;
+                            }
+                        }
+                    }
+                }
+                if (currentLayerPath.length > 0) hatchPaths.push(currentLayerPath);
+            }
+
+            // --- EXECUÇÃO DOS PADRÕES ---
+            if (settings.pattern === 'parallel' || settings.pattern === 'cross') {
+                // Loop de Espalhamento: Renderiza N passagens interlaçadas com desvios micro-milimétricos
+                for (let s = 0; s < spreadFactor; s++) {
+                    let offsetP = (s === 0) ? 0 : (Math.random() - 0.5) * baseSpacing;
+                    
+                    if (settings.pattern === 'parallel') {
+                        // Linha Paralela Pura
+                        drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85], offsetP); 
+                    } else if (settings.pattern === 'cross') {
+                        // Cruzamento Original Mestre
+                        drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85], offsetP); 
+                        drawDynamicHatch(135, [0.40, 0.65, 0.75, 0.90], offsetP);
+                        drawDynamicHatch(90, [0.65, 0.80, 0.90, 0.95], offsetP);
+                    }
+                }
+            } else {
+                // Estilos Orgânicos Volume & Formato
+                drawOrganicHatch(settings.pattern, [0.10, 0.35, 0.60, 0.85]);
+            }
 
             // --- MONTAGEM DAS 3 CAMADAS (Fundo, Sombreamento, Contorno) ---
             const edgePathString = edgePaths.join('\n');
@@ -841,7 +908,7 @@
         <rect width="${w}" height="${h}" fill="#ffffff" />
     </g>
     
-    <!-- CAMADA 2: Sombreamento Dinâmico em Cascata (Meio) -->
+    <!-- CAMADA 2: Hachuras Dinâmicas & Orgânicas (Meio) -->
     <g id="camada-2-sombreamentos">
         <path class="hatch" d="${hatchPathString}" />
     </g>
