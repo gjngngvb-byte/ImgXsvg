@@ -3,8 +3,8 @@
 <html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vector Screentone Pro FX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vector Screentone Pro FX (Plotter Ready)</title>
     <style>
         :root {
             --bg-base: #121212;
@@ -30,6 +30,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            flex-direction: row;
         }
 
         /* Layout */
@@ -54,9 +55,17 @@
             background-image: radial-gradient(#3a3a3a 1px, transparent 1px);
             background-size: 20px 20px;
             padding: 2rem;
-            overflow: auto;
+            overflow: hidden;
         }
 
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .main-view { flex: none; height: 50vh; padding: 1rem; border-bottom: 1px solid var(--border); }
+            .sidebar { flex: none; width: 100%; height: 50vh; }
+            input[type="range"]::-webkit-slider-thumb { width: 24px !important; height: 24px !important; }
+        }
+
+        /* Typography & Header */
         h1 {
             font-size: 1.25rem;
             font-weight: 700;
@@ -66,7 +75,6 @@
             align-items: center;
             gap: 8px;
         }
-
         h1 svg { color: var(--accent); }
 
         p.subtitle {
@@ -107,6 +115,7 @@
             background: var(--bg-input);
             border-radius: 2px;
             outline: none;
+            margin: 10px 0;
         }
 
         input[type="range"]::-webkit-slider-thumb {
@@ -118,12 +127,11 @@
             cursor: pointer;
             transition: transform 0.1s;
         }
-
         input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         
         select {
             width: 100%;
-            padding: 0.75rem;
+            padding: 0.85rem;
             background-color: var(--bg-input);
             color: var(--text-main);
             border: 1px solid var(--border);
@@ -133,105 +141,7 @@
             cursor: pointer;
         }
 
-        .btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 0.75rem;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-upload {
-            background-color: var(--bg-input);
-            color: var(--text-main);
-            border: 1px dashed var(--border);
-            margin-bottom: 0.5rem;
-        }
-
-        .btn-upload:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .btn-primary {
-            background-color: var(--accent);
-            color: #fff;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .btn-primary:hover { background-color: var(--accent-hover); }
-        .btn-primary:disabled {
-            background-color: var(--border);
-            color: var(--text-muted);
-            cursor: not-allowed;
-        }
-
-        .btn-outline {
-            background-color: transparent;
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-
-        .btn-outline:hover { background-color: rgba(14, 165, 233, 0.1); }
-
-        #svg-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #svg-container svg {
-            max-width: 100%;
-            max-height: 100%;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            background-color: transparent;
-        }
-
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(17, 24, 39, 0.95);
-            padding: 1.5rem 2.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            color: var(--accent);
-            font-weight: 600;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            z-index: 20;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-        
-        #loading-text { font-size: 0.85rem; color: var(--text-muted); font-weight: normal; text-align: center; }
-
-        .spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(14, 165, 233, 0.3);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        input[type="file"] { display: none; }
-        #hidden-canvas { display: none; }
-
+        /* Toggles */
         .layer-toggle {
             display: flex;
             align-items: center;
@@ -240,13 +150,14 @@
             margin-bottom: 0.75rem;
             font-size: 0.85rem;
             font-weight: 500;
+            padding: 5px 0;
         }
         .toggle-switch {
             position: relative;
-            width: 36px;
-            height: 20px;
+            width: 40px;
+            height: 24px;
             background-color: var(--border);
-            border-radius: 10px;
+            border-radius: 12px;
             transition: 0.3s;
         }
         .toggle-switch::after {
@@ -254,8 +165,8 @@
             position: absolute;
             top: 2px;
             left: 2px;
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             background-color: white;
             border-radius: 50%;
             transition: 0.3s;
@@ -263,6 +174,105 @@
         input[type="checkbox"].layer-checkbox { display: none; }
         input[type="checkbox"].layer-checkbox:checked + .toggle-switch { background-color: var(--accent); }
         input[type="checkbox"].layer-checkbox:checked + .toggle-switch::after { transform: translateX(16px); }
+
+        .btn-upload {
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px dashed var(--border);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 0.85rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-upload:hover { border-color: var(--accent); color: var(--accent); }
+        input[type="file"] { display: none; }
+
+        /* SVG Container & Preview */
+        #svg-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+        #svg-container svg, #svg-container img {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            background-color: transparent;
+            object-fit: contain;
+        }
+
+        /* Floating Action Buttons */
+        .floating-actions {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+        }
+        .float-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+        }
+        .float-btn svg { width: 24px; height: 24px; }
+        
+        .float-btn.primary { background-color: var(--accent); color: #fff; }
+        .float-btn.primary:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(14, 165, 233, 0.5); }
+        .float-btn.primary:disabled { background-color: var(--border); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
+        
+        .float-btn.secondary { background-color: var(--bg-panel); color: var(--accent); border: 2px solid var(--accent); }
+        .float-btn.secondary:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(0,0,0,0.5); background-color: rgba(14, 165, 233, 0.1); }
+
+        #loading {
+            position: absolute;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 600;
+            gap: 12px;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #loading.active { opacity: 1; pointer-events: auto; }
+        #loading-text { font-size: 0.85rem; color: var(--text-muted); font-weight: normal; text-align: center; }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(14, 165, 233, 0.3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        #hidden-canvas { display: none; }
     </style>
 </head>
 <body>
@@ -270,26 +280,34 @@
     <aside class="sidebar">
         <h1>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
-            Manga Studio FX
+            Plotter FX
         </h1>
-        <p class="subtitle">Vetorização Orgânica (3 Camadas)</p>
+        <p class="subtitle">1px Export / Simulação Real</p>
 
-        <label class="btn btn-upload">
+        <label class="btn-upload">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span id="file-name">Carregar Imagem...</span>
             <input type="file" id="upload" accept="image/png, image/jpeg, image/webp">
         </label>
 
-        <div class="section-title">Contornos Lisos (Layer 1)</div>
-        
+        <div class="section-title">Apresentação (Ecrã vs Máquina)</div>
         <div class="control-group">
             <div class="control-header">
-                <label>Sensibilidade (Força da Borda)</label>
+                <label>Simulação P/ Ecrã</label>
+                <span class="val-display" id="val-stroke">4.0px</span>
+            </div>
+            <input type="range" id="stroke" min="1.0" max="10.0" step="0.5" value="4.0">
+            <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;">Nota: O ficheiro SVG exportado terá as linhas convertidas explicitamente para 1px de espessura para corte limpo.</p>
+        </div>
+
+        <div class="section-title">Contornos Lisos (Layer 1)</div>
+        <div class="control-group">
+            <div class="control-header">
+                <label>Sensibilidade da Borda</label>
                 <span class="val-display" id="val-edge">25</span>
             </div>
             <input type="range" id="edge" min="5" max="100" value="25">
         </div>
-
         <div class="control-group">
             <div class="control-header">
                 <label>Filtro de Textura (Blur)</label>
@@ -297,15 +315,6 @@
             </div>
             <input type="range" id="blur" min="0" max="10" value="3">
         </div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label>Filtro de Sujidade (Tamanho)</label>
-                <span class="val-display" id="val-noise">15</span>
-            </div>
-            <input type="range" id="noise" min="0" max="50" value="15">
-        </div>
-
         <div class="control-group">
             <div class="control-header">
                 <label>Curvas Orgânicas (Bézier)</label>
@@ -315,7 +324,6 @@
         </div>
 
         <div class="section-title">Hachuras & Estilos (Layer 2)</div>
-
         <div class="control-group">
             <select id="pattern">
                 <option value="parallel">🖊️ Hachura Paralela</option>
@@ -325,33 +333,22 @@
                 <option value="scribble">🌫️ Hachura Livre (Scribble)</option>
             </select>
         </div>
-
         <div class="control-group">
             <div class="control-header">
-                <label>Espaçamento Base (Resolução)</label>
-                <span class="val-display" id="val-density">3px</span>
+                <label>Espaçamento Base</label>
+                <span class="val-display" id="val-density">16px</span>
             </div>
-            <input type="range" id="density" min="2" max="6" value="3">
+            <input type="range" id="density" min="4" max="40" value="16">
         </div>
-
         <div class="control-group">
             <div class="control-header">
-                <label>Espalhamento (Volume de Traços)</label>
+                <label>Espalhamento (Volume Extra)</label>
                 <span class="val-display" id="val-spread">1</span>
             </div>
             <input type="range" id="spread" min="1" max="5" value="1">
         </div>
 
-        <div class="section-title">Apresentação (3 Camadas)</div>
-
-        <div class="control-group">
-            <div class="control-header">
-                <label>Espessura Fina (SVG Stroke)</label>
-                <span class="val-display" id="val-stroke">0.5px</span>
-            </div>
-            <input type="range" id="stroke" min="0.1" max="2.0" step="0.1" value="0.5">
-        </div>
-
+        <div class="section-title">Camadas</div>
         <div class="control-group">
             <label class="layer-toggle">
                 <span>Camada 1: Contornos</span>
@@ -364,18 +361,10 @@
                 <div class="toggle-switch"></div>
             </label>
             <label class="layer-toggle">
-                <span>Camada 3: Fundo Sólido</span>
+                <span>Camada 3: Fundo Sólido Branco</span>
                 <input type="checkbox" id="toggle-layer3" class="layer-checkbox" checked>
                 <div class="toggle-switch"></div>
             </label>
-        </div>
-
-        <div style="margin-top: auto;">
-            <button id="btn-generate" class="btn btn-primary" disabled>Gerar Ilustração</button>
-            <button id="btn-export" class="btn btn-outline" style="display: none;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Exportar SVG
-            </button>
         </div>
     </aside>
 
@@ -384,11 +373,22 @@
             <div style="display: flex; gap:10px; align-items:center;">
                 <div class="spinner"></div> Processando Vetores...
             </div>
-            <div id="loading-text">A unir linhas quebradas e a suavizar...</div>
+            <div id="loading-text">Calculando malha de sombreamento...</div>
         </div>
         <div id="svg-container">
-            <div style="color: var(--border); font-size: 1.1rem; font-weight: 500;">Faça upload de uma imagem</div>
+            <div style="color: var(--border); font-size: 1.1rem; font-weight: 500; text-align: center; padding: 20px;">Faça upload de uma imagem</div>
         </div>
+        
+        <!-- Action Buttons Flutuantes -->
+        <div class="floating-actions">
+            <button id="btn-generate" class="float-btn primary" disabled title="Gerar Vetores">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+            </button>
+            <button id="btn-export" class="float-btn secondary" style="display: none;" title="Descarregar SVG 1px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+        </div>
+
         <canvas id="hidden-canvas"></canvas>
     </main>
 
@@ -423,6 +423,13 @@
                 if (l1) l1.style.display = toggleL1.checked ? 'inline' : 'none';
                 if (l2) l2.style.display = toggleL2.checked ? 'inline' : 'none';
                 if (l3) l3.style.display = toggleL3.checked ? 'inline' : 'none';
+
+                // Garante que o fundo geral do SVG acompanhe a opção da camada do fundo
+                if (toggleL3.checked) {
+                    svg.style.background = '#ffffff';
+                } else {
+                    svg.style.background = 'transparent';
+                }
             }
         }
 
@@ -430,7 +437,7 @@
         toggleL2.addEventListener('change', updateLayerVisibility);
         toggleL3.addEventListener('change', updateLayerVisibility);
 
-        const controls = ['density', 'stroke', 'edge', 'noise', 'smooth', 'blur', 'spread'];
+        const controls = ['density', 'stroke', 'edge', 'smooth', 'blur', 'spread'];
         const settings = {};
 
         controls.forEach(id => {
@@ -445,6 +452,7 @@
             });
         });
 
+        // Preview Automático
         uploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -471,13 +479,11 @@
                     canvas.height = h;
 
                     ctx.clearRect(0, 0, w, h);
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, w, h);
                     ctx.drawImage(img, 0, 0, w, h);
                     imgData = ctx.getImageData(0, 0, w, h);
                     btnGenerate.disabled = false;
                     
-                    svgContainer.innerHTML = `<div style="color: var(--accent); font-size: 1rem;">Imagem pronta! Selecione as Hachuras e gere.</div>`;
+                    svgContainer.innerHTML = `<img src="${event.target.result}" style="border-radius: 8px;">`;
                 };
                 img.src = event.target.result;
             };
@@ -490,13 +496,12 @@
             settings.density = parseInt(document.getElementById('density').value);
             settings.stroke = parseFloat(document.getElementById('stroke').value);
             settings.edge = parseInt(document.getElementById('edge').value);
-            settings.noise = parseInt(document.getElementById('noise').value);
             settings.smooth = parseInt(document.getElementById('smooth').value);
             settings.blur = parseInt(document.getElementById('blur').value);
             settings.spread = parseInt(document.getElementById('spread').value);
             settings.pattern = document.getElementById('pattern').value;
 
-            loading.style.display = 'flex';
+            loading.classList.add('active');
             btnExport.style.display = 'none';
             
             requestAnimationFrame(() => {
@@ -504,16 +509,14 @@
             });
         });
 
-        // --- ATUALIZAÇÃO DA EXPORTAÇÃO ---
-        // Agora, as camadas não selecionadas são fisicamente eliminadas do código descarregado
+        // --- LÓGICA DE EXPORTAÇÃO CUMPRINDO O QUE FOI OCULTO ---
         btnExport.addEventListener('click', () => {
             const originalSvg = svgContainer.querySelector('svg');
             if (!originalSvg) return;
             
-            // Clona o SVG inteiro para podermos manipular sem afetar o DOM visível do utilizador
             const svgClone = originalSvg.cloneNode(true);
             
-            // Elimina fisicamente os grupos das camadas que estão ocultas
+            // Removemos as camadas do arquivo final caso tenham sido ocultadas na tela
             if (!toggleL1.checked) {
                 const l1 = svgClone.getElementById('camada-1-contornos');
                 if (l1) l1.remove();
@@ -525,21 +528,26 @@
             if (!toggleL3.checked) {
                 const l3 = svgClone.getElementById('camada-3-fundo');
                 if (l3) l3.remove();
+                // Se o utilizador não quer fundo, garante que a raiz do SVG fica transparente
+                svgClone.style.background = 'transparent';
             }
 
-            // Remove atributos inline `display: none` ou `display: inline` gerados pelo UI
-            // para que o SVG fique completamente limpo
+            // Remove o display="none" das tags ativas (para evitar lixo inline no ficheiro svg)
             ['camada-1-contornos', 'camada-2-sombreamentos', 'camada-3-fundo'].forEach(id => {
                 const element = svgClone.getElementById(id);
                 if (element) element.style.display = '';
             });
             
-            const svgString = svgClone.outerHTML; 
+            let svgString = svgClone.outerHTML; 
+            
+            // CONVERSÃO PARA PLOTTER: Altera qualquer espessura explícita para stroke-width="1"
+            svgString = svgString.replace(/stroke-width="[\d.]+"/g, 'stroke-width="1"');
+
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'manga-illustration-pro.svg';
+            a.download = 'plotter-artwork-1px.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -555,13 +563,23 @@
             const h = imgHeight;
             const data = imgData.data;
 
-            // --- 1. Luma (Guardado intacto para as Hachuras da Camada 2) ---
             const lumaMap = new Float32Array(w * h);
+            const alphaMap = new Uint8Array(w * h);
+
             for(let i=0; i<w*h; i++) {
-                lumaMap[i] = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2];
+                let idx = i*4;
+                let r = data[idx];
+                let g = data[idx+1];
+                let b = data[idx+2];
+                let alpha = data[idx+3];
+                
+                alphaMap[i] = alpha;
+                
+                let aNorm = alpha / 255.0;
+                let luma = 0.299*r + 0.587*g + 0.114*b;
+                lumaMap[i] = luma * aNorm + 255.0 * (1.0 - aNorm);
             }
 
-            // --- 1B. Filtro de Textura Forte (Exclusivo para Contornos Perfeitos na Camada 1) ---
             const blurMap = new Float32Array(w * h);
             const tempMap = new Float32Array(w * h);
             for(let i=0; i<w*h; i++) blurMap[i] = lumaMap[i];
@@ -583,7 +601,6 @@
                 for(let i=0; i<w*h; i++) blurMap[i] = tempMap[i];
             }
 
-            // --- 2. Extração de Contornos (Sobel com Limites Seguros) ---
             loadingText.textContent = "1/3 Extraindo contornos mestres...";
             const mag = new Float32Array(w * h);
             const dir = new Uint8Array(w * h);
@@ -591,6 +608,11 @@
             for(let y=1; y<h-1; y++) {
                 for(let x=1; x<w-1; x++) {
                     if (x <= 8 || x >= w - 8 || y <= 8 || y >= h - 8) {
+                        mag[y*w+x] = 0;
+                        continue;
+                    }
+
+                    if (alphaMap[y*w+x] < 10) {
                         mag[y*w+x] = 0;
                         continue;
                     }
@@ -615,7 +637,6 @@
                 }
             }
 
-            // --- 3. Supressão Não-Máxima ---
             const nms = new Float32Array(w * h);
             for(let y=2; y<h-2; y++) {
                 for(let x=2; x<w-2; x++) {
@@ -632,7 +653,6 @@
                 }
             }
 
-            // --- 4. Hysteresis Global ---
             const edgesMap = new Uint8Array(w * h);
             const highThresh = settings.edge;
             const lowThresh = settings.edge * 0.3; 
@@ -662,8 +682,7 @@
                 }
             }
 
-            // --- 5. Rastreamento e Bézier (A Lógica Perfeita de Contornos da Camada 1) ---
-            loadingText.textContent = "2/3 Soldando linhas e a aplicar curvas Bézier...";
+            loadingText.textContent = "2/3 Convertendo para Curvas Vetoriais...";
             const visited = new Uint8Array(w * h);
             let edgePaths = [];
 
@@ -770,7 +789,7 @@
                             } else break;
                         }
 
-                        if (path.length >= settings.noise) {
+                        if (path.length >= 8) {
                             let smoothed = smoothPath(path, settings.smooth);
                             let simplified = rdp(smoothed, 0.8);
                             edgePaths.push(pathToBezierSVG(simplified));
@@ -779,13 +798,12 @@
                 }
             }
 
-            // --- 6. HACHURAS AVANÇADAS (Camada 2 - Novos Padrões e Espalhamento) ---
-            loadingText.textContent = "3/3 Aplicando Sombreamento (Screentone Cascata)...";
+            // --- 6. HACHURAS AVANÇADAS ---
+            loadingText.textContent = "3/3 Processando Hachuras Inteligentes...";
             let hatchPaths = [];
             const baseSpacing = settings.density;
             const spreadFactor = settings.spread; 
 
-            // ALGORITMO ORIGINAL MANTIDO 100% INTACTO (Usado para Parallel e Cross-Hatching)
             function drawDynamicHatch(baseAngle, thresholds, offsetP = 0) {
                 const angleRad = baseAngle * Math.PI / 180;
                 const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
@@ -813,8 +831,10 @@
 
                         let shouldDraw = false;
                         if (px >= 0 && px < w && py >= 0 && py < h) {
-                            let darkness = 1.0 - (lumaMap[py * w + px] / 255.0);
-                            if (darkness >= minDarkness) shouldDraw = true;
+                            if (alphaMap[py * w + px] >= 10) {
+                                let darkness = 1.0 - (lumaMap[py * w + px] / 255.0);
+                                if (darkness >= minDarkness) shouldDraw = true;
+                            }
                         }
 
                         if (shouldDraw) {
@@ -837,13 +857,14 @@
                 if (currentLayerPath.length > 0) hatchPaths.push(currentLayerPath);
             }
 
-            // ALGORITMOS NOVOS (Rústicos, Circulares e Contorno - Baseados na Célula Original)
             function drawOrganicHatch(style, thresholds) {
                 let currentLayerPath = "";
                 let step = baseSpacing;
                 
                 for(let y=step; y<h-step; y+=step) {
                     for(let x=step; x<w-step; x+=step) {
+                        if (alphaMap[y*w+x] < 10) continue;
+
                         let luma = lumaMap[y*w+x];
                         let darkness = 1.0 - (luma / 255.0);
                         
@@ -896,52 +917,48 @@
                 if (currentLayerPath.length > 0) hatchPaths.push(currentLayerPath);
             }
 
-            // --- EXECUÇÃO DOS PADRÕES ---
-            if (settings.pattern === 'parallel' || settings.pattern === 'cross') {
+            if (settings.pattern === 'parallel') {
                 for (let s = 0; s < spreadFactor; s++) {
                     let offsetP = (s === 0) ? 0 : (Math.random() - 0.5) * baseSpacing;
-                    
-                    if (settings.pattern === 'parallel') {
-                        drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85], offsetP); 
-                    } else if (settings.pattern === 'cross') {
-                        drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85], offsetP); 
-                        drawDynamicHatch(135, [0.40, 0.65, 0.75, 0.90], offsetP);
-                        drawDynamicHatch(90, [0.65, 0.80, 0.90, 0.95], offsetP);
-                    }
+                    drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85], offsetP); 
+                }
+            } else if (settings.pattern === 'cross') {
+                for (let s = 0; s < spreadFactor; s++) {
+                    let offsetP = (s === 0) ? 0 : (Math.random() - 0.5) * baseSpacing;
+                    drawDynamicHatch(45, [0.10, 0.35, 0.60, 0.85], offsetP); 
+                    drawDynamicHatch(135, [0.40, 0.65, 0.75, 0.90], offsetP);
+                    drawDynamicHatch(90, [0.65, 0.80, 0.90, 0.95], offsetP);
                 }
             } else {
                 drawOrganicHatch(settings.pattern, [0.10, 0.35, 0.60, 0.85]);
             }
 
-            // --- MONTAGEM DAS 3 CAMADAS (Fundo, Sombreamento, Contorno) ---
             const edgePathString = edgePaths.join('\n');
             const hatchPathString = hatchPaths.join('\n');
 
+            /* CONFIGURAÇÃO EXTREMAMENTE RIGOROSA: Sem opacity, sem hex fora do padrao. Base pura. */
             currentSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
-    <style>
-        .edge { stroke: #000000; stroke-width: ${settings.stroke * 2.2}px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-        .hatch { stroke: #111111; stroke-width: ${settings.stroke}px; stroke-linecap: round; stroke-linejoin: round; fill: none; opacity: 0.95; }
-    </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="color-scheme: light; background: #ffffff;">
     
-    <!-- CAMADA 3: Fundo Sólido (Abaixo de tudo) -->
+    <!-- CAMADA 3: Fundo Sólido Branco -->
     <g id="camada-3-fundo">
         <rect width="${w}" height="${h}" fill="#ffffff" />
     </g>
     
-    <!-- CAMADA 2: Hachuras Dinâmicas & Orgânicas (Meio) -->
-    <g id="camada-2-sombreamentos">
-        <path class="hatch" d="${hatchPathString}" />
+    <!-- CAMADA 2: Sombreamentos com Preto Puro -->
+    <g id="camada-2-sombreamentos" stroke="#000000" stroke-width="${settings.stroke}" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="${hatchPathString}" />
     </g>
 
-    <!-- CAMADA 1: Contornos Lisos (Sobrepõe os sombreamentos) -->
-    <g id="camada-1-contornos">
-        <path class="edge" d="${edgePathString}" />
+    <!-- CAMADA 1: Contornos Exatos com Preto Puro -->
+    <g id="camada-1-contornos" stroke="#000000" stroke-width="${settings.stroke}" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="${edgePathString}" />
     </g>
 </svg>`;
 
             svgContainer.innerHTML = currentSvgString;
-            loading.style.display = 'none';
+            loading.classList.remove('active');
+            
             btnExport.style.display = 'flex';
             
             updateLayerVisibility();
