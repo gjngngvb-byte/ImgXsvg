@@ -1,0 +1,600 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Otimizador de SVG PRO com Comparador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .drop-zone { transition: all 0.2s ease; }
+        .drop-zone.dragover { background-color: #1e293b; border-color: #3b82f6; transform: scale(1.02); }
+
+        .checkerboard {
+            background-image: linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                              linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                              linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        /* Estilos do Comparador Lado a Lado */
+        .split-view-container {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            overflow: hidden;
+            border-radius: 0.5rem;
+        }
+
+        .split-view-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 2rem;
+            pointer-events: none;
+        }
+
+        .split-optimized {
+            clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+        }
+
+        .split-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            background: #3b82f6;
+            transform: translateX(-50%);
+            cursor: ew-resize;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .split-slider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 36px;
+            background: #3b82f6;
+            border-radius: 50%;
+            border: 3px solid #0f172a;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"/><path d="M6 8L2 12L6 16"/></svg>');
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: 18px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        .view-label {
+            position: absolute;
+            top: 15px;
+            padding: 6px 14px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 5;
+            border: 1px solid #334155;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .label-original { left: 15px; color: #94a3b8; }
+        .label-optimized { right: 15px; color: #60a5fa; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 text-blue-500">
+                <i data-lucide="zap" class="w-6 h-6"></i>
+                <h1 class="text-xl font-bold text-white">SVG Optimizer Pro</h1>
+            </div>
+            <a href="#" onclick="carregarExemplo()" class="text-sm px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors">
+                Carregar Exemplo
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <aside class="lg:col-span-4 space-y-6">
+            <!-- Estatísticas e Resultados (Aparece após Otimizar) -->
+            <div id="statsBox" class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg hidden">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4 text-blue-400"></i>
+                    Resultados da Otimização
+                </h3>
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <span class="block text-xs text-slate-500 mb-1">Tamanho Original</span>
+                        <span id="sizeOriginal" class="font-mono text-slate-300 font-medium text-lg">0 KB</span>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded-lg border border-blue-900/50">
+                        <span class="block text-xs text-blue-400 mb-1">Tamanho Otimizado</span>
+                        <span id="sizeOptimized" class="font-mono text-blue-400 font-bold text-lg">0 KB</span>
+                    </div>
+                </div>
+
+                <div class="bg-green-900/20 border border-green-900/50 p-4 rounded-lg flex items-center justify-between">
+                    <div>
+                        <span class="block text-xs text-green-500 mb-1">Diferença / Poupança</span>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="arrow-down-circle" class="w-5 h-5 text-green-400"></i>
+                            <span id="sizeDiff" class="font-mono text-green-400 font-bold text-xl">0 KB</span>
+                        </div>
+                    </div>
+                    <div class="text-right border-l border-green-900/50 pl-4">
+                        <span class="block text-xs text-green-500 mb-1">Redução</span>
+                        <span id="savedPercent" class="font-black text-green-400 text-2xl">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ajustes -->
+            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-slate-400"></i>
+                    Configurações
+                </h2>
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="flex justify-between text-sm font-medium text-slate-300 mb-2">
+                            <span>Casas Decimais (Matemática)</span>
+                            <span id="decimalValue" class="text-blue-400 font-bold bg-blue-500/10 px-2 rounded">2</span>
+                        </label>
+                        <input type="range" id="opt-decimals" min="0" max="4" value="2" 
+                               class="w-full accent-blue-500 cursor-pointer"
+                               oninput="document.getElementById('decimalValue').innerText = this.value; onSettingChange();">
+                    </div>
+
+                    <hr class="border-slate-700">
+
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <div class="relative flex items-center mt-1">
+                            <input type="checkbox" id="opt-metadata" checked class="sr-only" onchange="onSettingChange()">
+                            <div class="w-9 h-5 bg-slate-600 rounded-full shadow-inner transition-colors group-hover:bg-slate-500 peer-checked:bg-blue-500"></div>
+                            <div class="dot absolute w-3.5 h-3.5 bg-white rounded-full left-1 transition-transform peer-checked:translate-x-[16px]"></div>
+                        </div>
+                        <div class="flex-1">
+                            <span class="text-sm font-medium text-slate-200 block">Remover Metadados</span>
+                            <span class="text-xs text-slate-500">Limpa tags desnecessárias (ex: Inkscape/Illustrator)</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <div class="relative flex items-center mt-1">
+                            <input type="checkbox" id="opt-invisible" checked class="sr-only" onchange="onSettingChange()">
+                            <div class="w-9 h-5 bg-slate-600 rounded-full shadow-inner transition-colors group-hover:bg-slate-500 peer-checked:bg-blue-500"></div>
+                            <div class="dot absolute w-3.5 h-3.5 bg-white rounded-full left-1 transition-transform peer-checked:translate-x-[16px]"></div>
+                        </div>
+                        <div class="flex-1">
+                            <span class="text-sm font-medium text-slate-200 block">Eliminar Ocultos</span>
+                            <span class="text-xs text-slate-500">Apaga itens com opacidade 0 ou ocultos</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <div class="relative flex items-center mt-1">
+                            <input type="checkbox" id="opt-comments" checked class="sr-only" onchange="onSettingChange()">
+                            <div class="w-9 h-5 bg-slate-600 rounded-full shadow-inner transition-colors group-hover:bg-slate-500 peer-checked:bg-blue-500"></div>
+                            <div class="dot absolute w-3.5 h-3.5 bg-white rounded-full left-1 transition-transform peer-checked:translate-x-[16px]"></div>
+                        </div>
+                        <div class="flex-1">
+                            <span class="text-sm font-medium text-slate-200 block">Limpar Estrutura</span>
+                            <span class="text-xs text-slate-500">Remove comentários do código e grupos vazios</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </aside>
+
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Input Area com Botões de Ação Principais -->
+            <div id="inputArea" class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+                <h3 class="text-base font-semibold text-white mb-2">1. Insira o seu SVG</h3>
+                <p class="text-sm text-slate-400 mb-4">Cole o código abaixo ou carregue um ficheiro.</p>
+                
+                <textarea id="svgInput" class="w-full h-32 bg-slate-900 border border-slate-700 rounded-lg p-4 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-slate-900 resize-none transition-colors mb-4" placeholder="<svg xmlns='http://www.w3.org/2000/svg'>..."></textarea>
+                
+                <div class="flex items-center gap-3">
+                    <input type="file" id="fileInput" accept=".svg" class="hidden" onchange="handleFileUpload(event)">
+                    <button onclick="document.getElementById('fileInput').click()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="folder-open" class="w-4 h-4"></i> Procurar Ficheiro
+                    </button>
+                    
+                    <!-- Botão Principal de Otimizar -->
+                    <button onclick="handleOptimizeClick()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="zap" class="w-5 h-5"></i> Otimizar Agora
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output Area -->
+            <div id="outputArea" class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg hidden flex-col overflow-hidden">
+                <div class="flex border-b border-slate-700 bg-slate-800/50">
+                    <button onclick="switchTab('visual')" id="tabVisual" class="flex-1 py-3 text-sm font-medium text-blue-400 border-b-2 border-blue-500 bg-slate-800/50 flex items-center justify-center gap-2">
+                        <i data-lucide="split-square-horizontal" class="w-4 h-4"></i> Comparador Visual
+                    </button>
+                    <button onclick="switchTab('code')" id="tabCode" class="flex-1 py-3 text-sm font-medium text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:bg-slate-700/30 flex items-center justify-center gap-2">
+                        <i data-lucide="code-2" class="w-4 h-4"></i> Ver Código Final
+                    </button>
+                </div>
+
+                <div id="previewVisual" class="checkerboard relative">
+                    <div class="split-view-container" id="splitContainer">
+                        <div class="view-label label-original">Original</div>
+                        <div class="view-label label-optimized">Otimizado</div>
+                        
+                        <img id="imgOriginal" class="split-view-img split-original" alt="Original">
+                        <img id="imgOptimized" class="split-view-img split-optimized" alt="Otimizado">
+                        
+                        <div class="split-slider" id="splitSlider"></div>
+                    </div>
+                </div>
+
+                <div id="previewCode" class="hidden relative h-[450px]">
+                    <textarea id="svgOutput" readonly class="w-full h-full bg-slate-900 text-green-400 font-mono text-xs p-5 resize-none focus:outline-none"></textarea>
+                </div>
+
+                <div class="p-4 bg-slate-900 border-t border-slate-700 flex justify-end gap-3">
+                    <button onclick="copyCode()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="copy" class="w-4 h-4"></i> Copiar Código
+                    </button>
+                    <button onclick="downloadSVG()" class="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-lg shadow-green-600/20 transition-all">
+                        <i data-lucide="download" class="w-4 h-4"></i> Descarregar SVG
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div id="toastIconContainer"></div>
+        <span id="toastMsg" class="text-sm font-medium">Ação realizada!</span>
+    </div>
+
+    <style>
+        input:checked ~ div.dot { transform: translateX(16px); }
+    </style>
+
+    <script>
+        lucide.createIcons();
+
+        let originalSvgString = "";
+        let optimizedSvgString = "";
+        let objectUrlOriginal = null;
+        let objectUrlOptimized = null;
+        let hasOptimizedOnce = false; // Controla se o utilizador já clicou no botão Otimizar
+
+        const svgInput = document.getElementById('svgInput');
+
+        function handleFileUpload(event) {
+            if (event.target.files[0]) {
+                const file = event.target.files[0];
+                if (file.type !== "image/svg+xml" && !file.name.toLowerCase().endsWith('.svg')) {
+                    showToast("Por favor, selecione apenas ficheiros .svg", true);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    svgInput.value = e.target.result;
+                    showToast("Ficheiro carregado! Clique em Otimizar Agora.");
+                    hasOptimizedOnce = false; // Força a clicar no botão de novo
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Função disparada ao clicar no botão "Otimizar Agora"
+        function handleOptimizeClick() {
+            if (!svgInput.value.trim()) {
+                showToast("Cole o código ou escolha um ficheiro primeiro.", true);
+                return;
+            }
+            hasOptimizedOnce = true;
+            processSVG();
+            showToast("SVG Otimizado com Sucesso!");
+        }
+
+        // Função disparada ao mudar as opções de configuração
+        function onSettingChange() {
+            // Só atualiza em tempo real se o utilizador já tiver clicado no botão otimizar antes
+            if(hasOptimizedOnce) {
+                processSVG();
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function processSVG() {
+            let inputCode = svgInput.value.trim();
+            if (!inputCode) return;
+            
+            const isSvgIndex = inputCode.toLowerCase().indexOf('<svg');
+            if (isSvgIndex === -1) {
+                showToast("Nenhum elemento <svg> válido encontrado no código.", true);
+                return;
+            }
+
+            inputCode = inputCode.substring(isSvgIndex);
+
+            if (!/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/i.test(inputCode) && !/xmlns='http:\/\/www\.w3\.org\/2000\/svg'/i.test(inputCode)) {
+                inputCode = inputCode.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+
+            originalSvgString = inputCode;
+            let svg = originalSvgString;
+
+            const decimals = parseInt(document.getElementById('opt-decimals').value);
+            const removeMetadata = document.getElementById('opt-metadata').checked;
+            const removeInvisible = document.getElementById('opt-invisible').checked;
+            const removeComments = document.getElementById('opt-comments').checked;
+
+            try {
+                if (removeComments) {
+                    svg = svg.replace(/<!--[\s\S]*?-->/g, '');
+                    svg = svg.replace(/<\?xml[\s\S]*?\?>/g, '');
+                    svg = svg.replace(/<!DOCTYPE[\s\S]*?>/g, '');
+                }
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svg, "image/svg+xml");
+                
+                if (doc.querySelector("parsererror")) {
+                    showToast("Erro: O SVG contém tags corrompidas ou formato XML inválido.", true);
+                    return;
+                }
+
+                const svgEl = doc.documentElement;
+
+                if (removeMetadata) {
+                    const tagsToRemove = ['metadata', 'title', 'desc', 'defs>style', 'sodipodi\\:namedview'];
+                    tagsToRemove.forEach(tag => {
+                        Array.from(doc.querySelectorAll(tag)).forEach(el => el.remove());
+                    });
+                    
+                    const walkAndClean = (node) => {
+                        if (node.attributes) {
+                            for (let i = node.attributes.length - 1; i >= 0; i--) {
+                                const attr = node.attributes[i];
+                                if (attr.name.startsWith('inkscape:') || attr.name.startsWith('sodipodi:') || attr.name.startsWith('data-name')) {
+                                    node.removeAttribute(attr.name);
+                                }
+                            }
+                        }
+                        Array.from(node.childNodes).forEach(walkAndClean);
+                    };
+                    walkAndClean(svgEl);
+                }
+
+                if (removeInvisible) {
+                    Array.from(doc.querySelectorAll('[display="none"], [opacity="0"], [opacity="0.0"]')).forEach(el => el.remove());
+                }
+
+                const regexNumeros = /-?\d+\.\d+/g;
+                const formatNumber = (match) => {
+                    const num = parseFloat(match);
+                    if (isNaN(num)) return match;
+                    return Number(num.toFixed(decimals)).toString();
+                };
+                
+                Array.from(doc.querySelectorAll('path, polygon, polyline, circle, rect, line, ellipse, svg')).forEach(el => {
+                    ['d', 'points', 'cx', 'cy', 'r', 'x', 'y', 'width', 'height', 'x1', 'y1', 'x2', 'y2', 'viewBox'].forEach(attr => {
+                        if (el.hasAttribute(attr)) {
+                            try {
+                                const originalAttr = el.getAttribute(attr);
+                                el.setAttribute(attr, originalAttr.replace(regexNumeros, formatNumber));
+                            } catch (e) { }
+                        }
+                    });
+                });
+
+                if (removeComments) {
+                    let emptyGroups;
+                    do {
+                        emptyGroups = Array.from(doc.querySelectorAll('g')).filter(g => g.children.length === 0 && g.textContent.trim() === '');
+                        emptyGroups.forEach(g => g.remove());
+                    } while(emptyGroups.length > 0);
+                }
+
+                const serializer = new XMLSerializer();
+                optimizedSvgString = serializer.serializeToString(svgEl)
+                    .replace(/\sxmlns:[a-z]+=""/g, '')
+                    .replace(/>\s+</g, '><');
+
+                updateUI();
+                resetSplitView();
+
+            } catch (error) {
+                console.error(error);
+                showToast(`Erro Crítico: ${error.message}`, true);
+            }
+        }
+
+        function createBlobUrl(svgContent) {
+            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+            return URL.createObjectURL(blob);
+        }
+
+        function updateUI() {
+            document.getElementById('outputArea').classList.remove('hidden');
+            document.getElementById('statsBox').classList.remove('hidden');
+
+            if (objectUrlOriginal) URL.revokeObjectURL(objectUrlOriginal);
+            if (objectUrlOptimized) URL.revokeObjectURL(objectUrlOptimized);
+
+            objectUrlOriginal = createBlobUrl(originalSvgString);
+            objectUrlOptimized = createBlobUrl(optimizedSvgString);
+
+            document.getElementById('imgOriginal').src = objectUrlOriginal;
+            document.getElementById('imgOptimized').src = objectUrlOptimized;
+            
+            document.getElementById('svgOutput').value = optimizedSvgString.replace(/(>)(<)(\/*)/g, '$1\n$2$3');
+
+            // Cálculos precisos de ficheiro
+            const sizeIn = new Blob([originalSvgString]).size;
+            const sizeOut = new Blob([optimizedSvgString]).size;
+            const sizeDifference = sizeIn - sizeOut;
+
+            // Atualização do quadro de Estatísticas (Formatado inteligentemente entre Bytes/KB)
+            document.getElementById('sizeOriginal').innerText = formatBytes(sizeIn);
+            document.getElementById('sizeOptimized').innerText = formatBytes(sizeOut);
+            
+            // Lidar com casos onde a otimização não reduziu o ficheiro
+            if (sizeDifference > 0) {
+                document.getElementById('sizeDiff').innerText = "- " + formatBytes(sizeDifference);
+                document.getElementById('sizeDiff').className = "font-mono text-green-400 font-bold text-xl";
+                document.querySelector('#sizeDiff').previousElementSibling.classList.replace('text-slate-400', 'text-green-400');
+                
+                let percent = (sizeDifference / sizeIn) * 100;
+                document.getElementById('savedPercent').innerText = percent.toFixed(1) + '%';
+                document.getElementById('savedPercent').className = "font-black text-green-400 text-2xl";
+            } else if (sizeDifference === 0) {
+                document.getElementById('sizeDiff').innerText = "0 Bytes";
+                document.getElementById('sizeDiff').className = "font-mono text-slate-400 font-bold text-xl";
+                document.querySelector('#sizeDiff').previousElementSibling.classList.replace('text-green-400', 'text-slate-400');
+                
+                document.getElementById('savedPercent').innerText = "0%";
+                document.getElementById('savedPercent').className = "font-black text-slate-400 text-2xl";
+            }
+        }
+
+        // --- LÓGICA DO COMPARADOR LADO A LADO ---
+        const splitContainer = document.getElementById('splitContainer');
+        const splitSlider = document.getElementById('splitSlider');
+        const splitOptimized = document.querySelector('.split-optimized');
+        let isDragging = false;
+
+        function resetSplitView() {
+            splitSlider.style.left = '50%';
+            splitOptimized.style.clipPath = `polygon(50% 0, 100% 0, 100% 100%, 50% 100%)`;
+        }
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const rect = splitContainer.getBoundingClientRect();
+            let x = clientX - rect.left;
+            
+            if (x < 0) x = 0;
+            if (x > rect.width) x = rect.width;
+            
+            let percent = (x / rect.width) * 100;
+            splitSlider.style.left = `${percent}%`;
+            splitOptimized.style.clipPath = `polygon(${percent}% 0, 100% 0, 100% 100%, ${percent}% 100%)`;
+        }
+
+        splitSlider.addEventListener('mousedown', () => isDragging = true);
+        splitSlider.addEventListener('touchstart', () => isDragging = true);
+        window.addEventListener('mouseup', () => isDragging = false);
+        window.addEventListener('touchend', () => isDragging = false);
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('touchmove', onDrag);
+
+        function switchTab(tab) {
+            const visTab = document.getElementById('tabVisual');
+            const codeTab = document.getElementById('tabCode');
+            const visView = document.getElementById('previewVisual');
+            const codeView = document.getElementById('previewCode');
+
+            const activeClass = ['text-blue-400', 'border-blue-500', 'bg-slate-800/50'];
+            const inactiveClass = ['text-slate-400', 'border-transparent', 'hover:text-slate-300', 'hover:bg-slate-700/30'];
+
+            if (tab === 'visual') {
+                visTab.classList.remove(...inactiveClass); visTab.classList.add(...activeClass);
+                codeTab.classList.remove(...activeClass); codeTab.classList.add(...inactiveClass);
+                visView.classList.remove('hidden'); codeView.classList.add('hidden');
+            } else {
+                codeTab.classList.remove(...inactiveClass); codeTab.classList.add(...activeClass);
+                visTab.classList.remove(...activeClass); visTab.classList.add(...inactiveClass);
+                codeView.classList.remove('hidden'); visView.classList.add('hidden');
+            }
+        }
+
+        function copyCode() {
+            if (!optimizedSvgString) return;
+            navigator.clipboard.writeText(optimizedSvgString).then(() => showToast("Código SVG copiado!"))
+            .catch(() => {
+                const ta = document.createElement("textarea"); ta.value = optimizedSvgString; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast("Código copiado!");
+            });
+        }
+
+        function downloadSVG() {
+            if (!optimizedSvgString) return;
+            const blob = new Blob([optimizedSvgString], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'otimizado.svg';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            showToast("Download iniciado!");
+        }
+
+        let toastTimeout;
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const container = document.getElementById('toastIconContainer');
+            
+            document.getElementById('toastMsg').innerText = message;
+            container.innerHTML = `<i data-lucide="${isError ? 'alert-circle' : 'check-circle'}" class="w-5 h-5 ${isError ? 'text-red-400' : 'text-green-400'}"></i>`;
+            lucide.createIcons({ root: container });
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3500);
+        }
+
+        function carregarExemplo() {
+            const exemplo = `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <metadata><title>Vetor Complexo</title></metadata>
+  <sodipodi:namedview pagecolor="#ffffff" bordercolor="#666666" />
+  <g display="none"><rect width="200" height="200" fill="red"/></g>
+  <path d="M 50.123456,150.98765 C 50.1234,100.1111 150.9999,100.2222 150.4444,150.3333 Z" fill="#3b82f6" stroke="#1e40af" stroke-width="4.56789"/>
+  <circle cx="100.12345" cy="70.98765" r="30.12345" fill="#10b981" />
+  <!-- Camada Lixo -->
+  <g data-name="Layer 2"></g>
+  <path d="M 10.1111,10.2222 L 30.3333,10.2222 L 20.4444,30.5555 Z" fill="#f59e0b" opacity="0"/>
+  <text x="100.123" y="190.456" text-anchor="middle" font-family="sans-serif" font-size="12.3456" fill="#64748b">Arraste a barra para comparar</text>
+</svg>`;
+            svgInput.value = exemplo;
+            showToast("Exemplo carregado! Clique em Otimizar Agora.");
+            hasOptimizedOnce = false; // Permite clicar no botão novamente
+        }
+    </script>
+</body>
+</html>
+
+
+```
